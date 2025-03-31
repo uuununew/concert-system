@@ -1,4 +1,7 @@
 HELP.md
+.idea
+/out
+/build
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
