@@ -38,3 +38,29 @@ sequenceDiagram
 
 </div>
 </details>
+
+
+<details>
+<summary>예약 가능 날짜 조회 API</summary>
+<div markdown="1">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor 사용자 as 사용자
+    participant API as API
+    participant 콘서트 as 콘서트
+
+    사용자 ->> API: 예약 가능한 날짜 목록 요청
+    API ->> 콘서트: 유효한 토큰 확인 및 날짜 목록 조회
+
+    alt 토큰이 만료되지 않은 경우
+        콘서트 -->> API: 예약 가능한 날짜 목록 반환
+        API -->> 사용자: 날짜 목록 반환
+    else 토큰이 만료된 경우
+        콘서트 -->> API: 토큰 만료 오류 반환
+        API -->> 사용자: 토큰 만료 응답
+    end
+```
+</div>
+</details>
