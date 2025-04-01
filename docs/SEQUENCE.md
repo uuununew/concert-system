@@ -64,3 +64,32 @@ sequenceDiagram
 ```
 </div>
 </details>
+
+
+<details>
+<summary>좌석 조회 API</summary>
+<div markdown="1">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor 사용자 as 사용자
+    participant API as API
+    participant 대기열 as 대기열
+    participant 콘서트 as 콘서트
+
+    사용자 ->> API: 좌석 조회 API 요청 (토큰 포함)
+    API ->> 대기열: 토큰 유효성 확인 요청
+    alt 토큰이 유효하지 않은 경우
+        대기열 -->> API: 토큰 유효하지 않음 응답
+        API -->> 사용자: 접근 불가 응답
+    else 토큰이 유효한 경우
+        대기열 -->> API: 유효한 토큰 응답
+        API ->> 콘서트: 날짜에 해당하는 좌석 정보 조회
+        콘서트 -->> API: 좌석 정보 반환
+        API -->> 사용자: 좌석 정보 응답
+    end
+```
+
+</div>
+</details>
