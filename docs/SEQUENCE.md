@@ -133,3 +133,32 @@ sequenceDiagram
 
 </div>
 </details>
+
+
+<details>
+<summary>잔액 조회 API</summary>
+<div markdown="1">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor 사용자 as 사용자
+    participant API as 잔액 조회 API
+    participant 대기열 as 대기열
+    participant 잔액 as 잔액 처리 시스템
+
+    사용자 ->> API: 잔액 조회 요청 (토큰 포함)
+    API ->> 대기열: 토큰 유효성 검사
+    alt 토큰이 유효한 경우
+        대기열 -->> API: 유효
+        API ->> 잔액: 사용자 ID로 잔액 조회
+        잔액 -->> API: 잔액 반환
+        API -->> 사용자: 잔액 반환
+    else 토큰이 유효하지 않은 경우
+        대기열 -->> API: 무효
+        API -->> 사용자: 인증 실패 응답
+    end
+```
+
+</div>
+</details>
