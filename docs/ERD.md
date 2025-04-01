@@ -1,1 +1,3 @@
-![Untitled (1).png](..%2F..%2F..%2FDownloads%2FUntitled%20%281%29.png)
+## ERD 
+
+![ERD 다이어그램](./images/erd.png)
