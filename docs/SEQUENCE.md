@@ -90,3 +90,34 @@ sequenceDiagram
 
 </div>
 </details>
+
+<details>
+<summary>좌석 예약 요청 API</summary>
+<div markdown="1">
+
+- 사용자는 날짜와 좌석 번호, 대기열 토큰을 포함해 예약 요청을 보냅니다.
+- 서버는 토큰 유효성을 확인한 뒤 해당 좌석이 예약 가능한 상태일 경우 5분간 임시 배정합니다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor 사용자
+    participant API as 예약 API
+    participant 좌석 as ConcertScheduleSeatService
+
+    note over 사용자, API: ※유효한 대기열 토큰을 가진 사용자만 호출 가능
+
+    사용자 ->> API: 날짜와 좌석 번호로 예약 요청
+    API ->> 좌석: 좌석 상태 조회
+    alt 좌석이 예약 가능할 경우
+        좌석 ->> 좌석: 임시 배정 상태로 변경 (5분 타이머 설정)
+        좌석 -->> API: 임시 배정 완료
+        API -->> 사용자: 좌석 임시 배정 성공 응답
+    else 좌석이 이미 임시 배정 중일 경우
+        좌석 -->> API: 예약 불가
+        API -->> 사용자: 좌석 예약 불가 응답
+    end
+```
+
+</div>
+</details>
