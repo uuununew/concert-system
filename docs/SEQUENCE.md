@@ -41,3 +41,26 @@ sequenceDiagram
 
 </div>
 </details>
+
+<details>
+<summary>예약 가능 날짜 조회 API</summary>
+<div markdown="1">
+
+```mermaid
+sequenceDiagram
+    participant 사용자
+    participant API
+    participant ConcertService
+    participant DB
+
+    note over 사용자, API: ※유효한 대기열 토큰을 가진 사용자만 호출 가능
+
+    사용자->>API: 예약 가능한 날짜 요청 (토큰 포함)
+    API->>ConcertService: 유효성 검사 및 조회 요청
+    ConcertService->>DB: 공연 정보 조회
+    ConcertService-->>API: 예약 가능한 날짜 목록 반환
+    API-->>사용자: 날짜 목록 응답
+```
+
+</div>
+</details>
