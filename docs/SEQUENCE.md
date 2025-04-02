@@ -171,3 +171,31 @@ sequenceDiagram
 
 </div>
 </details>
+
+<details>
+<summary>충전 API</summary>
+<div markdown="1">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor 사용자
+    participant API as 충전 API
+    participant 대기열 as WaitingTokenService
+    participant 잔액 as WalletService
+
+    사용자 ->> API: 충전 요청 (Authorization 포함)
+    API ->> 대기열: 토큰 검증
+    alt 토큰 무효
+        API -->> 사용자: 에러 응답
+    else 토큰 유효
+        API ->> 잔액: 사용자 잔액 조회
+        잔액 -->> API: 잔액 또는 없음
+        API ->> 잔액: 잔액 저장 또는 업데이트
+        잔액 -->> API: 완료 응답
+        API -->> 사용자: 충전 완료 응답 (총 잔액 포함)
+    end
+```
+
+</div>
+</details>
