@@ -41,3 +41,37 @@ sequenceDiagram
 
 </div>
 </details>
+
+<details>
+<summary>좌석 조회 API</summary>
+<div markdown="1">
+
+- 사용자는 대기열 토큰을 포함해 좌석 정보를 요청합니다.
+- 토큰이 유효한 경우에만 해당 공연 회차의 좌석 목록을 조회해 응답합니다
+
+```mermaid
+sequenceDiagram
+    participant 사용자
+    participant API
+    participant WaitingTokenService
+    participant ConcertService
+    participant DB
+
+    사용자->>API: 좌석 조회 요청 (토큰, 날짜 포함)
+    API->>WaitingTokenService: 토큰 유효성 확인
+    WaitingTokenService->>DB: 토큰 조회
+    alt 토큰 유효
+        WaitingTokenService-->>API: 유효함
+        API->>ConcertService: 좌석 정보 요청
+        ConcertService->>DB: 좌석 정보 조회
+        ConcertService-->>API: 좌석 목록 반환
+        API-->>사용자: 좌석 정보 응답
+    else 토큰 유효하지 않음
+        note right of WaitingTokenService: 만료 or 미통과 상태
+        WaitingTokenService-->>API: 오류 응답
+        API-->>사용자: 접근 불가 응답
+    end
+```
+
+</div>
+</details>
