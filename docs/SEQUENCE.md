@@ -199,3 +199,51 @@ sequenceDiagram
 
 </div>
 </details>
+
+<details>
+<summary>결제 API</summary>
+<div markdown="1">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor 사용자
+    participant API as 결제 API
+    participant 대기열 as WaitingTokenService
+    participant 잔액 as WalletService
+    participant 좌석 as ConcertScheduleSeatService
+    participant 결제 as PaymentService
+
+    사용자 ->> API: 결제 요청 (Authorization, 좌석 ID 포함)
+    API ->> 대기열: 토큰 검증
+    alt 토큰 무효
+        API -->> 사용자: 에러 응답
+    else 토큰 유효
+        API ->> 대기열: 대기열 상태 조회
+        alt 상태가 EXPIRED
+            API -->> 사용자: 에러 응답 (대기 만료)
+        else 상태 유효
+            API ->> 잔액: 잔액 조회 및 결제 가능 여부 확인
+            alt 잔액 부족
+                API -->> 사용자: 에러 응답 (잔액 부족)
+            else 잔액 충분
+                잔액 ->> 잔액: 잔액 차감
+                잔액 -->> API: 차감 완료
+                API ->> 좌석: 임시 좌석 → 확정 상태 변경
+                opt 전체 좌석 마감 시
+                    좌석 ->> 좌석: 공연 상태 마감 처리
+                end
+                API ->> 결제: 결제 정보 저장 및 영수증 생성
+                API ->> 대기열: 상태를 DONE으로 변경
+                API -->> 사용자: 결제 완료 응답 (좌석 정보 포함)
+            end
+        end
+    end
+
+    rect rgba(0, 0, 255, .1)
+        note over 대기열: PROGRESS 상태는 30분 경과 시 스케줄러에 의해 EXPIRED로 변경됨
+    end
+```
+
+</div>
+</details>
