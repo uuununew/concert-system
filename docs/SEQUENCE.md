@@ -134,6 +134,31 @@ sequenceDiagram
 </details>
 
 <details>
+<summary>임시 배정 좌석 해제 스케줄러</summary>
+<div markdown="1">
+
+```mermaid
+sequenceDiagram
+    participant 스케줄러
+    participant 좌석 as ConcertScheduleSeatService
+
+    note over 스케줄러, 좌석: ※ 임시 배정된 좌석을 일정 주기로 해제
+
+    loop 일정 주기
+        스케줄러 ->> 좌석: 임시 배정 만료 여부 확인
+        alt 만료된 좌석 존재
+            좌석 ->> 좌석: 임시 배정 해제 처리
+        else 해제할 좌석 없음
+            note over 스케줄러: 대기
+        end
+    end
+
+```
+
+</div>
+</details>
+
+<details>
 <summary>잔액 조회 API</summary>
 <div markdown="1">
 
