@@ -27,24 +27,18 @@ public class ReservationController {
                     @ApiResponse(
                             responseCode = "201",
                             description = "예약 성공",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = SeatReservationResponse.class)
+                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SeatReservationResponse.class)
                             )
                     ),
                     @ApiResponse(
                             responseCode = "400",
                             description = "잘못된 요청",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class))
+                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
                     ),
                     @ApiResponse(
                             responseCode = "404",
                             description = "콘서트 또는 회차 없음",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class))
+                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
                     )
             }
     )
