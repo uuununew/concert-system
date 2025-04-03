@@ -56,7 +56,7 @@ public class ConcertScheduleController {
             }
     )
     @GetMapping
-    public ResponseEntity<List<ConcertScheduleDto>> getSchedules(@RequestParam Long concertId) {
+    public ResponseEntity<List<ConcertScheduleDto>> getSchedules(@RequestParam("concertId") Long concertId) {
         List<ConcertScheduleDto> schedules = List.of(
                 new ConcertScheduleDto(101L, concertId, "2025-05-01", "19:00", true),
                 new ConcertScheduleDto(102L, concertId, "2025-05-02", "19:00", false)
