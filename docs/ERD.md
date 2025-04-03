@@ -1,1 +1,0 @@
-![ERD 다이어그램](./images/erd.png)
