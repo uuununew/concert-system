@@ -22,22 +22,18 @@ public class CashController {
                     @ApiResponse(
                             responseCode = "200",
                             description = "조회 성공",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = CashBalanceResponse.class)
-                            )
+                            content = @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = CashBalanceResponse.class))
                     ),
                     @ApiResponse(
                             responseCode = "404",
                             description = "유저 없음",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class))
+                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
                     )
             }
     )
     @GetMapping
-    public ResponseEntity<CashBalanceResponse> getCash(@RequestParam Long userId) {
+    public ResponseEntity<CashBalanceResponse> getCash(@RequestParam("userId") Long userId) {
         CashBalanceResponse response = new CashBalanceResponse(userId, 30000);
         return ResponseEntity.ok(response);
     }
@@ -49,24 +45,17 @@ public class CashController {
                     @ApiResponse(
                             responseCode = "200",
                             description = "충전 성공",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = CashBalanceResponse.class)
-                            )
+                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CashBalanceResponse.class))
                     ),
                     @ApiResponse(
                             responseCode = "400",
                             description = "잘못된 요청",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class))
+                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
                     ),
                     @ApiResponse(
                             responseCode = "404",
                             description = "유저 없음",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class))
+                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
                     )
             }
     )
