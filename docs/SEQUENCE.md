@@ -50,7 +50,6 @@ sequenceDiagram
 
 - 시스템은 주기적으로 대기 중인 토큰을 조회하여 입장 조건 또는 만료 조건을 판단합니다.
 - 조건을 만족한 토큰은 ACTIVE 상태로, 유효 시간이 지난 토큰은 EXPIRED 상태로 갱신합니다.
-- 불가능하고 유효한 토큰은 상태를 유지합니다.
 
 ```mermaid
 sequenceDiagram
