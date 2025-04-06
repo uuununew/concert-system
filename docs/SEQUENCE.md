@@ -36,19 +36,46 @@ sequenceDiagram
         사용자->>UserController: 대기 상태 확인 요청
         UserController->>WaitingTokenService: 상태 확인 요청
         WaitingTokenService->>WaitingTokenRepository: 사용자 토큰 조회
-
-        alt 상태 = ACTIVE
-            WaitingTokenService-->>UserController: 입장 가능 응답
-        else 상태 = WAITING
-            note right of WaitingTokenService: 순번 조회 후 필요 시 ACTIVE로 갱신
-            WaitingTokenService-->>UserController: 대기 순번 응답
-        else 상태 = EXPIRED
-            WaitingTokenService-->>UserController: 만료 안내 응답
-        end
-
+        WaitingTokenService-->>UserController: 현재 상태 값 응답
         UserController-->>사용자: 상태 응답
     end
 ```
+
+</div>
+</details>
+
+<details>
+<summary>대기열 토큰 상태 갱신 스케줄러</summary>
+<div markdown="1">
+
+- 시스템은 주기적으로 대기 중인 토큰을 조회하여 입장 조건 또는 만료 조건을 판단합니다.
+- 조건을 만족한 토큰은 ACTIVE 상태로, 유효 시간이 지난 토큰은 EXPIRED 상태로 갱신합니다.
+- 불가능하고 유효한 토큰은 상태를 유지합니다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant TokenActivationScheduler
+    participant WaitingTokenRepository
+    participant WaitingTokenService
+
+    note over TokenActivationScheduler: 주기적 실행 (예: 5초 간격)
+
+    TokenActivationScheduler->>WaitingTokenRepository: 상태 = WAITING인 토큰 목록 조회
+
+    loop 토큰 목록 순회
+        TokenActivationScheduler->>WaitingTokenService: 순번 및 시간 기준 상태 판단
+
+        alt 입장 가능 조건 충족
+            WaitingTokenService->>WaitingTokenRepository: 토큰 상태 ACTIVE로 갱신
+        else 만료 조건 충족
+            WaitingTokenService->>WaitingTokenRepository: 토큰 상태 EXPIRED로 갱신
+        else 대기 유지
+            note right of WaitingTokenService: 상태 변경 없음
+        end
+    end
+```
+
 
 </div>
 </details>
@@ -251,7 +278,6 @@ sequenceDiagram
 
         alt 좌석 확정 성공
             UserController ->> PaymentService: 결제 정보 저장
-            PaymentService ->> PaymentService: 대기열 토큰 만료 처리
             UserController -->> 사용자: 결제 완료 응답
         else 좌석 확정 실패
             CashService ->> CashService: 잔액 롤백 처리
