@@ -9,7 +9,7 @@ public class UserCash {
 
     private final Long userId;
     private BigDecimal amount;
-    private static final BigDecimal MAX_CASH_LIMIT = new BigDecimal("1_000_000"); //100만원 한도
+    private static final BigDecimal MAX_CASH_LIMIT = BigDecimal.valueOf(1_000_000); //100만원 한도
 
     public UserCash(Long userId, BigDecimal initialAmount){
         if(userId == null) throw new IllegalArgumentException("userID는 null일 수 없습니다.");
