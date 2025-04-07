@@ -1,0 +1,32 @@
+package kr.hhplus.be.server.domain.cash;
+
+import lombok.Getter;
+
+import java.math.BigDecimal;
+
+@Getter
+public class UserCash {
+
+    private final Long userId;
+    private BigDecimal amount;
+
+    public UserCash(Long userId, BigDecimal initialAmount){
+        if(userId == null) throw new IllegalArgumentException("userID는 null일 수 없습니다.");
+        if(initialAmount == null || initialAmount.compareTo(BigDecimal.ZERO) < 0){
+            throw new IllegalArgumentException("초기 금액은 0 이상이어야 합니다.");
+        }
+        this.userId = userId;
+        this.amount = initialAmount;
+    }
+
+    public void charge(BigDecimal value){
+        validate(value);
+        this.amount = this.amount.add(value);
+    }
+
+    private void validate(BigDecimal value){
+        if(value == null || value.compareTo(BigDecimal.ZERO) <= 0){
+            throw new IllegalArgumentException("금액은 0보다 커야합니다.");
+        }
+    }
+}
