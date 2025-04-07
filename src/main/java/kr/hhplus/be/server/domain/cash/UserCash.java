@@ -24,6 +24,14 @@ public class UserCash {
         this.amount = this.amount.add(value);
     }
 
+    public void use(BigDecimal value){
+        validate(value);
+        if(this.amount.compareTo(value) < 0){
+            throw new IllegalArgumentException("잔액이 부족합니다.");
+        }
+        this.amount = this.amount.subtract(value);
+    }
+
     private void validate(BigDecimal value){
         if(value == null || value.compareTo(BigDecimal.ZERO) <= 0){
             throw new IllegalArgumentException("금액은 0보다 커야합니다.");

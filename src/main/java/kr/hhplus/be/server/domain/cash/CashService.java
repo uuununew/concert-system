@@ -18,4 +18,10 @@ public class CashService {
         return userCash.getAmount();
     }
 
+    public BigDecimal use(Long userId, BigDecimal amount) {
+        UserCash userCash = userCashRepository.findByUserId(userId);
+        userCash.use(amount);
+        return userCash.getAmount();
+    }
+
 }

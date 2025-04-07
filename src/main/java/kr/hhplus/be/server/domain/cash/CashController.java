@@ -21,4 +21,10 @@ public class CashController {
         BigDecimal chargedAmount = cashService.charge(request.getUserId(), request.getAmount());
         return ResponseEntity.ok(new CashResponse(chargedAmount));
     }
+
+    @PostMapping("/use")
+    public ResponseEntity<CashResponse> use(@RequestBody UseRequest request) {
+        BigDecimal remaining = cashService.use(request.getUserId(), request.getAmount());
+        return ResponseEntity.ok(new CashResponse(remaining));
+    }
 }
