@@ -4,5 +4,6 @@ import java.util.Optional;
 
 public interface UserCashRepository {
     Optional<UserCash> findByUserId(Long userId);
-    void save(UserCash userCash);
+
+    UserCash save(UserCash userCash);
 }
