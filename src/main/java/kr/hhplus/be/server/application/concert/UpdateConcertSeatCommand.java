@@ -1,11 +1,7 @@
 package kr.hhplus.be.server.application.concert;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
-import lombok.Getter;
 
 import java.math.BigDecimal;
 
