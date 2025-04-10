@@ -1,6 +1,7 @@
 package kr.hhplus.be.server.application.cash;
 
-import kr.hhplus.be.server.exception.NotFoundException;
+import kr.hhplus.be.server.support.exception.CustomException;
+import kr.hhplus.be.server.support.exception.ErrorCode;
 import kr.hhplus.be.server.domain.cash.CashHistoryRepository;
 import kr.hhplus.be.server.presentation.cash.CashResponse;
 import kr.hhplus.be.server.domain.cash.UserCash;
@@ -46,7 +47,7 @@ public class CashService {
      */
     public CashResponse use(UseCashCommand command) {
         UserCash userCash = userCashRepository.findByUserId(command.getUserId())
-                .orElseThrow(() -> new NotFoundException("존재하지 않는 사용자입니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
 
         userCash.use(command.getAmount());
         userCashRepository.save(userCash);
