@@ -3,6 +3,7 @@ package kr.hhplus.be.server.domain.cash;
 import kr.hhplus.be.server.application.cash.CashService;
 import kr.hhplus.be.server.application.cash.ChargeCashCommand;
 import kr.hhplus.be.server.presentation.cash.CashResponse;
+import kr.hhplus.be.server.support.exception.CustomException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -47,7 +48,7 @@ public class UserCashTest {
         UserCash userCash = new UserCash(1L, BigDecimal.valueOf(999_000));
 
         // when // then : 999000 + 2000 = 1,001,000 예외 발생
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(CustomException.class, () ->
                 userCash.charge(BigDecimal.valueOf(2000)));
     }
 
@@ -79,7 +80,7 @@ public class UserCashTest {
         UserCash userCash = new UserCash(1L, BigDecimal.valueOf(1000));
 
         //when//then : 2000원 사용하려고 하면 예외 발생
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(CustomException.class, () ->
                 userCash.use(BigDecimal.valueOf(2000)));
     }
 
@@ -116,7 +117,7 @@ public class UserCashTest {
         UserCash userCash = new UserCash(1L, BigDecimal.valueOf(1000));
 
         // when//then : 0원 사용 시 예외
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(CustomException.class, () ->
                 userCash.use(BigDecimal.ZERO));
     }
 }

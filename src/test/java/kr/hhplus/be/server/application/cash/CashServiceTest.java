@@ -1,10 +1,10 @@
 package kr.hhplus.be.server.application.cash;
 
-import kr.hhplus.be.server.exception.NotFoundException;
 import kr.hhplus.be.server.domain.cash.CashHistoryRepository;
 import kr.hhplus.be.server.domain.cash.UserCash;
 import kr.hhplus.be.server.domain.cash.UserCashRepository;
 import kr.hhplus.be.server.presentation.cash.CashResponse;
+import kr.hhplus.be.server.support.exception.CustomException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +30,7 @@ public class CashServiceTest {
         CashService cashService = new CashService(mockUserCashRepository, mockCashHistoryRepository);
 
         // when// then
-        assertThrows(NotFoundException.class, () ->
+        assertThrows(CustomException.class, () ->
                 cashService.use(new UseCashCommand(userId, BigDecimal.valueOf(1000))));
 
         //이후 로직(userCash.use or save)은 실행되면 안됨
@@ -74,7 +74,7 @@ public class CashServiceTest {
         CashService cashService = new CashService(mockUserCashRepository, mockCashHistoryRepository);
 
         // when//then
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(CustomException.class, () ->
                 cashService.charge(new ChargeCashCommand(userId, BigDecimal.ZERO)));
 
         verify(mockUserCashRepository, never()).save(any());
@@ -118,7 +118,7 @@ public class CashServiceTest {
         CashService cashService = new CashService(mockUserCashRepository, mockCashHistoryRepository);
 
         // when // then : 2000원 충전하면 예외
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(CustomException.class, () ->
                 cashService.charge(new ChargeCashCommand(userId, BigDecimal.valueOf(2_000))));
 
         verify(mockUserCashRepository, never()).save(any());
@@ -162,7 +162,7 @@ public class CashServiceTest {
         CashService cashService = new CashService(mockUserCashRepository, mockCashHistoryRepository);
 
         // when // then : 1000원을 사용하면 예외
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(CustomException.class, () ->
                 cashService.use(new UseCashCommand(userId, BigDecimal.valueOf(1000))));
 
         verify(mockUserCashRepository, never()).save(any());
