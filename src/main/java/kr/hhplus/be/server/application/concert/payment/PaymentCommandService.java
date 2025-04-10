@@ -1,5 +1,7 @@
 package kr.hhplus.be.server.application.concert.payment;
 
+import kr.hhplus.be.server.application.cash.CashCommandService;
+import kr.hhplus.be.server.application.cash.UseCashCommand;
 import kr.hhplus.be.server.domain.concert.payment.Payment;
 import kr.hhplus.be.server.domain.concert.payment.PaymentRepository;
 import kr.hhplus.be.server.domain.concert.reservation.Reservation;
@@ -18,6 +20,7 @@ public class PaymentCommandService {
 
     private final ReservationRepository reservationRepository;
     private final PaymentRepository paymentRepository;
+    private final CashCommandService cashCommandService;
 
     /**
      * 결제 처리
@@ -32,6 +35,9 @@ public class PaymentCommandService {
         if (reservation.getStatus() != ReservationStatus.RESERVED) {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "결제 가능한 상태가 아닙니다.");
         }
+
+        // use - 금액 차감
+        cashCommandService.use(new UseCashCommand(command.userId(), command.amount()));
 
         // 예약 상태를 PAID로 변경
         Reservation paidReservation = reservation.markPaid();
