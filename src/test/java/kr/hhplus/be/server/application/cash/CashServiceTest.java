@@ -52,10 +52,10 @@ public class CashServiceTest {
 
         // when : 500원 충전하면
         ChargeCashCommand command = new ChargeCashCommand(userId, BigDecimal.valueOf(500));
-        CashResponse response = service.charge(command);
+        CashResult result = service.charge(command);
 
         // then : 1500원이 됨
-        assertEquals(BigDecimal.valueOf(1500), response.balance());
+        assertEquals(BigDecimal.valueOf(1500), result.getAmount());
         verify(mockUserCashRepository).save(user);
         verify(mockCashHistoryRepository).save(any());
     }
@@ -96,10 +96,10 @@ public class CashServiceTest {
 
         // when : 200,000 충전하면
         ChargeCashCommand command = new ChargeCashCommand(userId, BigDecimal.valueOf(200_000));
-        CashResponse cashResponse = cashService.charge(command);
+        CashResult result = cashService.charge(command);
 
         // then : 잔액은 1,000,000원이 되어야 한다.
-        assertEquals(BigDecimal.valueOf(1_000_000), cashResponse.balance());
+        assertEquals(BigDecimal.valueOf(1_000_000), result.getAmount());
         verify(mockUserCashRepository).save(userCash);
         verify(mockCashHistoryRepository).save(any());
     }
@@ -140,10 +140,10 @@ public class CashServiceTest {
 
         //when : 300원 사용
         UseCashCommand command = new UseCashCommand(userId, BigDecimal.valueOf(300));
-        CashResponse response = cashService.use(command);
+        CashResult result = cashService.use(command);
 
         //then : 잔액은 700원이 되어야함
-        assertEquals(BigDecimal.valueOf(700), response.balance());
+        assertEquals(BigDecimal.valueOf(700), result.getAmount());
         verify(mockUserCashRepository).save(userCash);
         verify(mockCashHistoryRepository).save(any());
     }

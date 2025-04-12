@@ -1,6 +1,7 @@
 package kr.hhplus.be.server.presentation.cash;
 
 import jakarta.validation.Valid;
+import kr.hhplus.be.server.application.cash.CashResult;
 import kr.hhplus.be.server.application.cash.CashService;
 import kr.hhplus.be.server.application.cash.ChargeCashCommand;
 import kr.hhplus.be.server.application.cash.UseCashCommand;
@@ -26,7 +27,8 @@ public class CashController {
     @PostMapping("/charge")
     public CashResponse charge(@RequestBody @Valid ChargeCashRequest request) {
         ChargeCashCommand command = new ChargeCashCommand(request.userId(), request.amount());
-        return cashService.charge(command);
+        CashResult result = cashService.charge(command);
+        return new CashResponse(result.getAmount());
     }
 
     /**
@@ -39,7 +41,8 @@ public class CashController {
     @PostMapping("/use")
     public CashResponse use(@RequestBody @Valid UseCashRequest request) {
         UseCashCommand command = new UseCashCommand(request.userId(), request.amount());
-        return cashService.use(command);
+        CashResult result = cashService.use(command);
+        return new CashResponse(result.getAmount());
     }
 
     /**
