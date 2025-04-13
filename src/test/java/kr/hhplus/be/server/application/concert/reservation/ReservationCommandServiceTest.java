@@ -1,9 +1,15 @@
 package kr.hhplus.be.server.application.concert.reservation;
 
+import kr.hhplus.be.server.application.token.TokenCommandService;
+import kr.hhplus.be.server.domain.concert.ConcertSeat;
+import kr.hhplus.be.server.domain.concert.ConcertSeatRepository;
+import kr.hhplus.be.server.domain.concert.SeatStatus;
 import kr.hhplus.be.server.domain.concert.reservation.Reservation;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationStatus;
+import kr.hhplus.be.server.domain.token.TokenRepository;
 import kr.hhplus.be.server.support.exception.CustomException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,17 +32,41 @@ public class ReservationCommandServiceTest {
     @Mock
     private ReservationRepository reservationRepository;
 
-    @InjectMocks
+    @Mock
+    private ConcertSeatRepository concertSeatRepository;
+
+    @Mock
+    private TokenRepository tokenRepository;
+
+    @Mock
+    private TokenCommandService tokenCommandService;
+
     private ReservationCommandService reservationCommandService;
+
+    @BeforeEach
+    void setUp() {
+        reservationCommandService = new ReservationCommandService(
+                tokenCommandService,
+                reservationRepository,
+                concertSeatRepository,
+                tokenRepository
+        );
+    }
+
 
     @Test
     @DisplayName("예약을 정상적으로 등록한다")
     void reserve_success() {
         // given
         CreateReservationCommand command = new CreateReservationCommand(1L, 2L, BigDecimal.valueOf(10000));
+
         when(reservationRepository.findByConcertSeatIdAndStatus(2L, ReservationStatus.RESERVED))
                 .thenReturn(Optional.empty());
-        when(reservationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(concertSeatRepository.findById(2L))
+                .thenReturn(Optional.of(new ConcertSeat(2L, 1L, "A1", "1층", "A", "VIP",
+                        BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, null)));
+        when(reservationRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         // when
         Reservation result = reservationCommandService.reserve(command);

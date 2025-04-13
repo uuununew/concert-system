@@ -7,6 +7,7 @@ import kr.hhplus.be.server.domain.concert.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationScheduleService;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationStatus;
 import kr.hhplus.be.server.domain.user.User;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 import static org.mockito.Mockito.when;
@@ -28,6 +31,30 @@ public class ReservationSchedulerServiceTest {
 
     @InjectMocks
     private ReservationScheduleService reservationScheduleService;
+
+    @BeforeEach
+    void setUp() {
+        reservationScheduleService = new ReservationScheduleService(reservationRepository);
+    }
+
+    @Test
+    @DisplayName("예약 스케줄러가 정상적으로 호출되어 예약을 취소한다")
+    void cancel_expired_reservations_success() {
+        // given
+        Reservation expired = mock(Reservation.class);
+        given(reservationRepository.findAllByStatusAndCreatedAtBefore(
+                eq(ReservationStatus.RESERVED),
+                any(LocalDateTime.class)
+        )).willReturn(List.of(expired));
+
+        given(expired.cancel()).willReturn(expired);
+
+        // when
+        reservationScheduleService.cancelReservationsBefore(LocalDateTime.now());
+
+        // then
+        verify(reservationRepository).save(expired);
+    }
 
     @Test
     @DisplayName("미결제 예약을 취소 처리한다")
