@@ -36,10 +36,15 @@ public class ConcertService {
         Concert concert = concertRepository.findById(concertId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 ID의 콘서트를 찾을 수 없습니다."));
 
-        concert.changeStatus(newStatus);
+        switch (newStatus) {
+            case OPENED -> concert.open();
+            case CLOSED -> concert.close();
+            case CANCELED -> concert.cancel();
+            default -> throw new CustomException(ErrorCode.INVALID_CONCERT_STATUS, "허용되지 않은 콘서트 상태입니다.");
+        }
+
         concertRepository.save(concert);
     }
-
     /**
      * 공연 전체 목록 조회
      */

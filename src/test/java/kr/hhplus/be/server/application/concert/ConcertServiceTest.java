@@ -90,7 +90,7 @@ public class ConcertServiceTest {
                 .hasMessageContaining("해당 ID의 콘서트를 찾을 수 없습니다.");
     }
 
-    @DisplayName("콘서트 상태 변경 테스트")
+    @DisplayName("콘서트 상태를 OPENED에서 CLOSED로 변경한다")
     @Test
     void change_concert_status_success() {
         // given
@@ -100,12 +100,48 @@ public class ConcertServiceTest {
         when(concertRepository.findById(concertId)).thenReturn(Optional.of(concert));
         when(concertRepository.save(any())).thenReturn(concert);
 
-        // when : 상태를 CLOSED로 변경
+        // when
         concertService.changeConcertStatus(concertId, ConcertStatus.CLOSED);
 
-        // then : 상태 변경 확인
-        assertEquals(ConcertStatus.CLOSED, concert.getStatus());
+        // then
+        assertThat(concert.getStatus()).isEqualTo(ConcertStatus.CLOSED);
         verify(concertRepository).save(concert);
+    }
+
+    @Test
+    @DisplayName("READY 상태가 아닌 콘서트에서 open()을 호출하면 예외가 발생한다")
+    void open_should_fail_if_not_ready() {
+        // given
+        Concert concert = new Concert("테스트", 1, ConcertStatus.CLOSED, LocalDateTime.now().plusDays(1));
+
+        // when & then
+        assertThatThrownBy(concert::open)
+                .isInstanceOf(CustomException.class)
+                .hasMessageContaining("콘서트는 READY 상태여야 열 수 있습니다.");
+    }
+
+    @Test
+    @DisplayName("OPENED 상태가 아닌 콘서트에서 close()를 호출하면 예외가 발생한다")
+    void close_should_fail_if_not_opened() {
+        // given
+        Concert concert = new Concert("테스트", 1, ConcertStatus.READY, LocalDateTime.now().plusDays(1));
+
+        // when & then
+        assertThatThrownBy(concert::close)
+                .isInstanceOf(CustomException.class)
+                .hasMessageContaining("콘서트는 OPENED 상태여야 종료할 수 있습니다.");
+    }
+
+    @Test
+    @DisplayName("READY, OPENED 상태가 아닌 콘서트에서 cancel()을 호출하면 예외가 발생한다")
+    void cancel_should_fail_if_invalid_status() {
+        // given
+        Concert concert = new Concert("테스트", 1, ConcertStatus.CLOSED, LocalDateTime.now().plusDays(1));
+
+        // when & then
+        assertThatThrownBy(concert::cancel)
+                .isInstanceOf(CustomException.class)
+                .hasMessageContaining("READY 또는 OPENED 상태만 취소할 수 있습니다.");
     }
 
     @DisplayName("OPENED 상태의 콘서트만 필터링하여 조회한다")

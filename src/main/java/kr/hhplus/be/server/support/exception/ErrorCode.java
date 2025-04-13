@@ -8,6 +8,10 @@ public enum ErrorCode {
     // 400
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "E400", "잘못된 요청입니다"),
 
+    //405
+    INVALID_CONCERT_STATUS(HttpStatus.BAD_REQUEST, "E405", "콘서트 상태가 올바르지 않습니다"),
+
+
     // 401
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "E401", "인증이 필요합니다"),
 
