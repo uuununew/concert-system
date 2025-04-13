@@ -1,5 +1,7 @@
-package kr.hhplus.be.server.domain.concert.reservation.token;
+package kr.hhplus.be.server.domain.token;
 
+import kr.hhplus.be.server.domain.token.QueueToken;
+import kr.hhplus.be.server.domain.token.TokenStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

@@ -1,6 +1,10 @@
-package kr.hhplus.be.server.application.concert.reservation.token;
+package kr.hhplus.be.server.application.token;
 
-import kr.hhplus.be.server.domain.concert.reservation.token.*;
+import kr.hhplus.be.server.application.token.TokenCommandService;
+import kr.hhplus.be.server.domain.token.QueueToken;
+import kr.hhplus.be.server.domain.token.TokenManager;
+import kr.hhplus.be.server.domain.token.TokenRepository;
+import kr.hhplus.be.server.domain.token.TokenStatus;
 import kr.hhplus.be.server.support.exception.CustomException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
