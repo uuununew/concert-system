@@ -1,9 +1,8 @@
-package kr.hhplus.be.server.application.concert.reservation.token;
+package kr.hhplus.be.server.application.token;
 
-import kr.hhplus.be.server.domain.concert.reservation.token.QueueToken;
-import kr.hhplus.be.server.domain.concert.reservation.token.TokenManager;
-import kr.hhplus.be.server.domain.concert.reservation.token.TokenRepository;
-import kr.hhplus.be.server.domain.concert.reservation.token.TokenStatus;
+import kr.hhplus.be.server.domain.token.QueueToken;
+import kr.hhplus.be.server.domain.token.TokenManager;
+import kr.hhplus.be.server.domain.token.TokenRepository;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
 

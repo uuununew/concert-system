@@ -1,6 +1,8 @@
-package kr.hhplus.be.server.application.concert.reservation.token;
+package kr.hhplus.be.server.presentation.token;
 
-import kr.hhplus.be.server.domain.concert.reservation.token.QueueToken;
+import kr.hhplus.be.server.application.token.TokenCommandService;
+import kr.hhplus.be.server.application.token.TokenQueryService;
+import kr.hhplus.be.server.domain.token.QueueToken;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,9 +14,12 @@ import java.util.Optional;
 public class TokenController {
 
     private final TokenCommandService tokenCommandService;
+    private final TokenQueryService tokenQueryService;
 
-    public TokenController(TokenCommandService tokenCommandService) {
+    public TokenController(TokenCommandService tokenCommandService,
+                           TokenQueryService tokenQueryService) {
         this.tokenCommandService = tokenCommandService;
+        this.tokenQueryService = tokenQueryService;
     }
 
     /**
@@ -42,12 +47,22 @@ public class TokenController {
     /**
      * [GET] /token/{userId}/status
      * - 유저의 현재 대기열 토큰 상태를 조회한다.
-     * - 토큰이 없을 경우 204 No Content
      */
     @GetMapping("/{userId}/status")
     public ResponseEntity<QueueToken> status(@PathVariable Long userId) {
         Optional<QueueToken> token = tokenCommandService.status(userId);
         return token.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    /**
+     * [GET] /token/{userId}/position
+     * - 대기열에서 현재 유저의 순서를 조회한다.
+     */
+    @GetMapping("/{userId}/position")
+    public ResponseEntity<Integer> getWaitingPosition(@PathVariable Long userId) {
+        Optional<Integer> position = tokenQueryService.getWaitingPosition(userId);
+        return position.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 

@@ -1,6 +1,6 @@
 package kr.hhplus.be.server.support.scheduler;
 
-import kr.hhplus.be.server.application.concert.reservation.token.TokenCommandService;
+import kr.hhplus.be.server.application.token.TokenCommandService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 

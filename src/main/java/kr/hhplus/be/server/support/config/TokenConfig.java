@@ -1,9 +1,9 @@
 package kr.hhplus.be.server.support.config;
 
-import kr.hhplus.be.server.application.concert.reservation.token.TokenCommandService;
-import kr.hhplus.be.server.domain.concert.reservation.token.TokenManager;
-import kr.hhplus.be.server.domain.concert.reservation.token.TokenRepository;
-import kr.hhplus.be.server.infrastructure.concert.reservation.token.InMemoryTokenRepository;
+import kr.hhplus.be.server.application.token.TokenCommandService;
+import kr.hhplus.be.server.domain.token.TokenManager;
+import kr.hhplus.be.server.domain.token.TokenRepository;
+import kr.hhplus.be.server.infrastructure.token.InMemoryTokenRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
