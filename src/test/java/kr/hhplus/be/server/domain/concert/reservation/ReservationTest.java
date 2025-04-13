@@ -50,7 +50,7 @@ public class ReservationTest {
     @DisplayName("PAID 상태의 예약은 취소 불가")
     void cancel_fail_when_paid() {
         Reservation reservation = Reservation.create(1L, 1L, BigDecimal.valueOf(10000))
-                .markPaid();
+                .pay();
 
         assertThatThrownBy(reservation::cancel)
                 .isInstanceOf(CustomException.class)
@@ -62,7 +62,7 @@ public class ReservationTest {
     void markPaid_success() {
         Reservation reservation = Reservation.create(1L, 1L, BigDecimal.valueOf(10000));
 
-        Reservation paid = reservation.markPaid();
+        Reservation paid = reservation.pay();
 
         assertThat(paid.getStatus()).isEqualTo(ReservationStatus.PAID);
         assertThat(paid.getPaidAt()).isNotNull();
@@ -77,7 +77,7 @@ public class ReservationTest {
                 LocalDateTime.now(), LocalDateTime.now()
         );
 
-        assertThatThrownBy(reservation::markPaid)
+        assertThatThrownBy(reservation::pay)
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining("RESERVED 상태일 때만 결제 가능합니다.");
     }

@@ -70,7 +70,7 @@ public class Reservation {
     }
 
     // 결제 완료 처리
-    public Reservation markPaid() {
+    public Reservation pay() {
         if (this.status != ReservationStatus.RESERVED) {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "RESERVED 상태일 때만 결제 가능합니다.");
         }
