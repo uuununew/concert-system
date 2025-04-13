@@ -20,9 +20,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ReservationCommandService {
 
+    private final TokenCommandService tokenCommandService;
     private final ReservationRepository reservationRepository;
     private final ConcertSeatRepository concertSeatRepository;
-    private final TokenCommandService tokenCommandService;
     private final TokenRepository tokenRepository;
 
     /**
