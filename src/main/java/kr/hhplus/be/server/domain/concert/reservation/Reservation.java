@@ -19,18 +19,18 @@ public class Reservation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private final Long id;
+    private Long id;
 
-    private final Long userId;
-    private final Long concertSeatId;
-    private final BigDecimal price;
+    private Long userId;
+    private Long concertSeatId;
+    private BigDecimal price;
 
     @Enumerated(EnumType.STRING)
-    private final ReservationStatus status;
+    private ReservationStatus status;
 
-    private final LocalDateTime paidAt;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private LocalDateTime paidAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     // 생성자
     public Reservation(

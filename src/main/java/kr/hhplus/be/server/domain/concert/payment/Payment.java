@@ -16,18 +16,16 @@ import java.time.LocalDateTime;
 public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private final Long id;
+    private Long id;
 
-    private final Long userId;
-
-    private final Long reservationId;
+    private Long userId;
+    private Long reservationId;
 
     @Enumerated(EnumType.STRING)
-    private final PaymentStatus status;
+    private PaymentStatus status;
 
-    private final BigDecimal amount;
-
-    private final LocalDateTime paidAt;
+    private BigDecimal amount;
+    private LocalDateTime paidAt;
 
     public Payment(
             Long id,

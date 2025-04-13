@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Getter
 public class QueueToken {
 
-    private final Long userId;
+    private Long userId;
     private final LocalDateTime issuedAt;
     private TokenStatus status;
 
