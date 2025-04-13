@@ -2,6 +2,7 @@ package kr.hhplus.be.server.application.concert.payment;
 
 import kr.hhplus.be.server.application.cash.CashCommandService;
 import kr.hhplus.be.server.domain.concert.payment.Payment;
+import kr.hhplus.be.server.domain.concert.payment.PaymentStatus;
 import kr.hhplus.be.server.domain.concert.reservation.Reservation;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.concert.payment.PaymentRepository;
@@ -91,7 +92,7 @@ public class PaymentCommandServiceTest {
         BigDecimal amount = BigDecimal.valueOf(10000);
         CreatePaymentCommand command = new CreatePaymentCommand(userId, reservationId, amount);
 
-        Reservation reserved = Reservation.create(userId, 10L, amount).markPaid(); // PAID 상태로 변경
+        Reservation reserved = Reservation.create(userId, 10L, amount).pay(); // PAID 상태로 변경
         when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reserved));
 
         // when//then : 결제 불가 예외 발생
@@ -105,7 +106,14 @@ public class PaymentCommandServiceTest {
     void cancel_payment_success() {
         // given : 정상적으로 결제된 상태의 결제 정보
         Long paymentId = 1L;
-        Payment payment = new Payment(paymentId, 1L, 10L, BigDecimal.valueOf(10000), LocalDateTime.now());
+        Payment payment = new Payment(
+                paymentId,
+                1L,
+                10L,
+                PaymentStatus.PAID,
+                BigDecimal.valueOf(10000),
+                LocalDateTime.now()
+        );
 
         when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
         when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -113,17 +121,25 @@ public class PaymentCommandServiceTest {
         // when : 결제 취소 요청
         Payment result = paymentCommandService.cancel(paymentId);
 
-        // then : paidAt 필드가 null 처리되어 취소됨을 확인
+        // then : 상태가 CANCELED이고 paidAt 필드가 null 처리되었는지 확인
+        assertThat(result.getStatus()).isEqualTo(PaymentStatus.CANCELED); // 상태 확인
         assertThat(result.getPaidAt()).isNull();
         verify(paymentRepository).save(any());
     }
 
-    @Test
     @DisplayName("이미 취소된 결제는 다시 취소할 수 없다")
+    @Test
     void cancel_payment_fail_when_already_canceled() {
-        // given : 이미 paidAt이 null인 상태 (즉, 취소된 결제)
+        // given : 이미 취소된 상태
         Long paymentId = 1L;
-        Payment canceledPayment = new Payment(paymentId, 1L, 10L, BigDecimal.valueOf(10000), null); // paidAt == null → 이미 취소됨
+        Payment canceledPayment = new Payment(
+                paymentId,
+                1L,
+                10L,
+                PaymentStatus.CANCELED,                      //취소된 상태
+                BigDecimal.valueOf(10000),
+                null                                         //paidAt도 null
+        );
 
         when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(canceledPayment));
 

@@ -2,6 +2,7 @@ package kr.hhplus.be.server.application.concert.payment;
 
 import kr.hhplus.be.server.domain.concert.payment.Payment;
 import kr.hhplus.be.server.domain.concert.payment.PaymentRepository;
+import kr.hhplus.be.server.domain.concert.payment.PaymentStatus;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.InjectMocks;
@@ -32,8 +33,8 @@ public class PaymentQueryServiceTest {
         // given
         Long userId = 1L;
         List<Payment> payments = List.of(
-                new Payment(1L, userId, 10L, BigDecimal.valueOf(10000), LocalDateTime.now()),
-                new Payment(2L, userId, 11L, BigDecimal.valueOf(15000), LocalDateTime.now())
+                new Payment(1L, userId, 10L, PaymentStatus.PAID, BigDecimal.valueOf(10000), LocalDateTime.now()),
+                new Payment(2L, userId, 11L, PaymentStatus.PAID, BigDecimal.valueOf(15000), LocalDateTime.now())
         );
 
         when(paymentRepository.findByUserId(userId)).thenReturn(payments);

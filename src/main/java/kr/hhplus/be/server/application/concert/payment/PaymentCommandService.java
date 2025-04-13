@@ -40,15 +40,14 @@ public class PaymentCommandService {
         cashCommandService.use(new UseCashCommand(command.userId(), command.amount()));
 
         // 예약 상태를 PAID로 변경
-        Reservation paidReservation = reservation.markPaid();
+        Reservation paidReservation = reservation.pay();
         reservationRepository.save(paidReservation);
 
         // 결제 정보 생성 및 저장
         Payment payment = Payment.create(
                 command.userId(),
                 paidReservation.getId(),
-                command.amount(),
-                LocalDateTime.now()
+                command.amount()
         );
         return paymentRepository.save(payment);
     }
