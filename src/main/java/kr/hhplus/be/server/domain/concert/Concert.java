@@ -59,6 +59,14 @@ public class Concert {
         return new Concert(title, round, status, concertDateTime);
     }
 
+    // 테스트 전용 팩토리 메서드
+    public static Concert withStatus(ConcertStatus status) {
+        Concert concert = new Concert();
+        concert.status = status;
+        concert.updatedAt = LocalDateTime.now();
+        return concert;
+    }
+
     /**
      * 콘서트를 예약 가능 상태로 연다
      */
@@ -85,7 +93,7 @@ public class Concert {
      * 콘서트를 취소한다
      */
     public void cancel() {
-        if (this.status != ConcertStatus.READY && this.status != ConcertStatus.OPENED) {
+        if (this.status == ConcertStatus.CANCELED || this.status == ConcertStatus.CLOSED) {
             throw new CustomException(ErrorCode.INVALID_CONCERT_STATUS, "READY 또는 OPENED 상태만 취소할 수 있습니다.");
         }
         this.status = ConcertStatus.CANCELED;
