@@ -23,10 +23,10 @@ public class ConcertSeatTest {
         );
 
         // when : 좌석 예약을 시도
-        ConcertSeat reserved = seat.reserve();
+        seat.reserve();
 
         // then : 상태가 RESERVED로 변경
-        assertThat(reserved.getStatus()).isEqualTo(SeatStatus.RESERVED);
+        assertThat(seat.getStatus()).isEqualTo(SeatStatus.RESERVED);
     }
 
     @Test
@@ -54,10 +54,10 @@ public class ConcertSeatTest {
         );
 
         // when : 결제 완료 처리 시도
-        ConcertSeat soldOut = seat.markSoldOut();
+        seat.markSoldOut();
 
         // then : 상태가 SOLD_OUT으로 변경
-        assertThat(soldOut.getStatus()).isEqualTo(SeatStatus.SOLD_OUT);
+        assertThat(seat.getStatus()).isEqualTo(SeatStatus.SOLD_OUT);
     }
 
     @Test
