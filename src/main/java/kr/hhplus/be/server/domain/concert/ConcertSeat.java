@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
 public class ConcertSeat {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,22 +33,46 @@ public class ConcertSeat {
 
     private LocalDateTime updatedAt;
 
+    public ConcertSeat(
+            Long id,
+            Long concertId,
+            String seatNumber,
+            String section,
+            String row,
+            String grade,
+            BigDecimal price,
+            SeatStatus status,
+            LocalDateTime updatedAt
+    ) {
+        this.id = id;
+        this.concertId = concertId;
+        this.seatNumber = seatNumber;
+        this.section = section;
+        this.row = row;
+        this.grade = grade;
+        this.price = price;
+        this.status = status;
+        this.updatedAt = updatedAt;
+    }
+
     /**
      * 비즈니스 로직용 생성 메서드
      * 초기 상태는 항상 AVAILABLE, 업데이트 시간은 현재 시간으로 설정
      */
     public static ConcertSeat of(Long concertId, String seatNumber, String section, String row, String grade, BigDecimal price) {
-        ConcertSeat seat = new ConcertSeat();
-        seat.concertId = concertId;
-        seat.seatNumber = seatNumber;
-        seat.section = section;
-        seat.row = row;
-        seat.grade = grade;
-        seat.price = price;
-        seat.status = SeatStatus.AVAILABLE;
-        seat.updatedAt = LocalDateTime.now();
-        return seat;
+        return new ConcertSeat(
+                null,
+                concertId,
+                seatNumber,
+                section,
+                row,
+                grade,
+                price,
+                SeatStatus.AVAILABLE,
+                LocalDateTime.now()
+        );
     }
+
 
     /**
      * 좌석 정보를 업데이트하는 메서드
@@ -65,7 +88,7 @@ public class ConcertSeat {
     }
 
     /**
-     * 테스트 및 상태 복원용 전체 필드 세팅 메서드
+     * 테스트용 팩토리 메서드
      */
     public static ConcertSeat withAll(Long id, Long concertId, String seatNumber, String section, String row,
                                       String grade, BigDecimal price, SeatStatus status, LocalDateTime updatedAt) {
@@ -92,27 +115,23 @@ public class ConcertSeat {
     /**
      * 좌석 상태를 RESERVED로 전환
      */
-    public ConcertSeat reserve() {
+    public void reserve() {
         if (!isAvailable()) {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "예약할 수 없는 좌석입니다.");
         }
-        return ConcertSeat.withAll(
-                this.id, this.concertId, this.seatNumber, this.section, this.row, this.grade,
-                this.price, SeatStatus.RESERVED, LocalDateTime.now()
-        );
+        this.status = SeatStatus.RESERVED;
+        this.updatedAt = LocalDateTime.now();
     }
 
     /**
      * 좌석 상태를 SOLD_OUT으로 전환
      */
-    public ConcertSeat markSoldOut() {
+    public void markSoldOut() {
         if (this.status != SeatStatus.RESERVED) {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "좌석 상태가 RESERVED일 때만 결제 완료로 전환할 수 있습니다.");
         }
-        return ConcertSeat.withAll(
-                this.id, this.concertId, this.seatNumber, this.section, this.row, this.grade,
-                this.price, SeatStatus.SOLD_OUT, LocalDateTime.now()
-        );
+        this.status = SeatStatus.SOLD_OUT;
+        this.updatedAt = LocalDateTime.now();
     }
 
 }
