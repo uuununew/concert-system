@@ -1,9 +1,12 @@
 package kr.hhplus.be.server.domain.concert.reservation;
 
 import kr.hhplus.be.server.application.concert.reservation.ReservationCommandService;
+import kr.hhplus.be.server.domain.concert.ConcertSeat;
+import kr.hhplus.be.server.domain.concert.SeatStatus;
 import kr.hhplus.be.server.domain.concert.reservation.Reservation;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationStatus;
+import kr.hhplus.be.server.domain.user.User;
 import kr.hhplus.be.server.support.exception.CustomException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,16 +33,32 @@ public class ReservationTest {
     @Test
     @DisplayName("정상 예약 생성 시 RESERVED 상태로 생성된다")
     void create_success() {
-        Reservation reservation = Reservation.create(1L, 1L, BigDecimal.valueOf(10000));
+        User user = new User(1L);
+        ConcertSeat seat = ConcertSeat.withAll(
+                10L, 100L, "A1", "1층", "A", "VIP",
+                BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now()
+        );
+        BigDecimal amount = BigDecimal.valueOf(10000);
+
+        Reservation reservation = Reservation.create(user, seat, amount);
 
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.RESERVED);
-        assertThat(reservation.getPrice()).isEqualTo(BigDecimal.valueOf(10000));
+        assertThat(reservation.getPrice()).isEqualTo(amount);
+        assertThat(reservation.getUserId()).isEqualTo(user.getId());
+        assertThat(reservation.getConcertSeatId()).isEqualTo(seat.getId());
     }
 
     @Test
     @DisplayName("RESERVED 상태의 예약은 CANCELED 상태로 변경 가능")
     void cancel_success() {
-        Reservation reservation = Reservation.create(1L, 1L, BigDecimal.valueOf(10000));
+        User user = new User(1L);
+        ConcertSeat seat = ConcertSeat.withAll(
+                10L, 100L, "A1", "1층", "A", "VIP",
+                BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now()
+        );
+        BigDecimal amount = BigDecimal.valueOf(10000);
+
+        Reservation reservation = Reservation.create(user, seat, amount);
 
         Reservation canceled = reservation.cancel();
 
@@ -49,8 +68,14 @@ public class ReservationTest {
     @Test
     @DisplayName("PAID 상태의 예약은 취소 불가")
     void cancel_fail_when_paid() {
-        Reservation reservation = Reservation.create(1L, 1L, BigDecimal.valueOf(10000))
-                .markPaid();
+        User user = new User(1L);
+        ConcertSeat seat = ConcertSeat.withAll(
+                10L, 100L, "A1", "1층", "A", "VIP",
+                BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now()
+        );
+        BigDecimal amount = BigDecimal.valueOf(10000);
+
+        Reservation reservation = Reservation.create(user, seat, amount).pay();
 
         assertThatThrownBy(reservation::cancel)
                 .isInstanceOf(CustomException.class)
@@ -60,13 +85,21 @@ public class ReservationTest {
     @Test
     @DisplayName("RESERVED 상태의 예약은 PAID 상태로 변경 가능")
     void markPaid_success() {
-        Reservation reservation = Reservation.create(1L, 1L, BigDecimal.valueOf(10000));
+        User user = new User(1L);
+        ConcertSeat seat = ConcertSeat.withAll(
+                10L, 100L, "A1", "1층", "A", "VIP",
+                BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now()
+        );
+        BigDecimal amount = BigDecimal.valueOf(10000);
 
-        Reservation paid = reservation.markPaid();
+        Reservation reservation = Reservation.create(user, seat, amount);
+
+        Reservation paid = reservation.pay();
 
         assertThat(paid.getStatus()).isEqualTo(ReservationStatus.PAID);
         assertThat(paid.getPaidAt()).isNotNull();
     }
+
 
     @Test
     @DisplayName("RESERVED 상태가 아니면 결제 완료로 변경할 수 없다")
@@ -77,7 +110,7 @@ public class ReservationTest {
                 LocalDateTime.now(), LocalDateTime.now()
         );
 
-        assertThatThrownBy(reservation::markPaid)
+        assertThatThrownBy(reservation::pay)
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining("RESERVED 상태일 때만 결제 가능합니다.");
     }

@@ -1,9 +1,14 @@
 package kr.hhplus.be.server.application.concert.payment;
 
+import kr.hhplus.be.server.application.cash.CashCommandService;
+import kr.hhplus.be.server.domain.concert.ConcertSeat;
+import kr.hhplus.be.server.domain.concert.SeatStatus;
 import kr.hhplus.be.server.domain.concert.payment.Payment;
+import kr.hhplus.be.server.domain.concert.payment.PaymentStatus;
 import kr.hhplus.be.server.domain.concert.reservation.Reservation;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.concert.payment.PaymentRepository;
+import kr.hhplus.be.server.domain.user.User;
 import kr.hhplus.be.server.support.exception.CustomException;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,28 +36,38 @@ public class PaymentCommandServiceTest {
     @Mock
     private ReservationRepository reservationRepository;
 
+    @Mock
+    private CashCommandService cashCommandService;
+
     @InjectMocks
     private PaymentCommandService paymentCommandService;
 
     @Test
     @DisplayName("RESERVED 상태의 예약일 경우 결제가 정상적으로 이루어진다")
     void pay_success() {
-        // given
-        Long reservationId = 1L;
-        Long userId = 10L;
-        BigDecimal amount = BigDecimal.valueOf(5000);
+        // given : 정상적인 예약이 존재하고 상태가 RESERVED인 경우
+        Long userId = 1L;
+        Long reservationId = 10L;
+        BigDecimal amount = BigDecimal.valueOf(10000);
         CreatePaymentCommand command = new CreatePaymentCommand(userId, reservationId, amount);
 
-        Reservation reserved = Reservation.create(userId, 100L, amount);
+        User user = new User(userId);
+        ConcertSeat seat = ConcertSeat.withAll(100L, 1L, "A1", "1층", "A", "VIP", amount, SeatStatus.RESERVED, LocalDateTime.now());
+        Reservation reserved = Reservation.create(user, seat, amount);
+
         when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reserved));
         when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // when
+        // when : 결제 요청
         Payment payment = paymentCommandService.pay(command);
 
-        // then
+        // then : 결제 정보가 저장되고, 예약 상태가 변경되며, 캐시 차감이 발생해야 함
         assertThat(payment.getUserId()).isEqualTo(userId);
         assertThat(payment.getAmount()).isEqualByComparingTo(amount);
+
+        verify(cashCommandService).use(argThat(cmd ->
+                cmd.getUserId().equals(userId) && cmd.getAmount().compareTo(amount) == 0
+        ));
         verify(reservationRepository).save(any());
         verify(paymentRepository).save(any());
     }
@@ -60,15 +75,15 @@ public class PaymentCommandServiceTest {
     @Test
     @DisplayName("예약이 존재하지 않을 경우 예외가 발생한다")
     void pay_fail_when_reservation_not_found() {
-        // given
-        Long reservationId = 99L;
+        // given : : 존재하지 않는 예약 ID로 결제 요청
         Long userId = 1L;
+        Long reservationId = 10L;
         BigDecimal amount = BigDecimal.valueOf(10000);
         CreatePaymentCommand command = new CreatePaymentCommand(userId, reservationId, amount);
 
         when(reservationRepository.findById(reservationId)).thenReturn(Optional.empty());
 
-        // when/then
+        // when//then : 예외 발생
         assertThatThrownBy(() -> paymentCommandService.pay(command))
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining("예약 정보를 찾을 수 없습니다.");
@@ -77,16 +92,19 @@ public class PaymentCommandServiceTest {
     @Test
     @DisplayName("예약 상태가 RESERVED가 아닐 경우 예외가 발생한다")
     void pay_fail_when_reservation_status_is_not_reserved() {
-        // given
-        Long reservationId = 1L;
+        // given : 예약 상태가 이미 PAID인 경우
         Long userId = 1L;
+        Long reservationId = 10L;
         BigDecimal amount = BigDecimal.valueOf(10000);
         CreatePaymentCommand command = new CreatePaymentCommand(userId, reservationId, amount);
 
-        Reservation reserved = Reservation.create(userId, 10L, amount).markPaid(); // PAID 상태로 변경
-        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reserved));
+        User user = new User(userId);
+        ConcertSeat seat = ConcertSeat.withAll(1L, 1L, "A1", "1층", "A", "VIP", amount, SeatStatus.AVAILABLE, LocalDateTime.now());
+        Reservation paid = Reservation.create(user, seat, amount).pay();
 
-        // when/then
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(paid));
+
+        // when//then : 결제 불가 예외 발생
         assertThatThrownBy(() -> paymentCommandService.pay(command))
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining("결제 가능한 상태가 아닙니다.");
@@ -95,27 +113,50 @@ public class PaymentCommandServiceTest {
     @DisplayName("결제를 취소한다")
     @Test
     void cancel_payment_success() {
-        // given
+        // given : 정상적으로 결제된 상태의 결제 정보
+        Long userId = 1L;
+        Long reservationId = 10L;
+        BigDecimal amount = BigDecimal.valueOf(10000);
         Long paymentId = 1L;
-        Payment payment = new Payment(paymentId, 1L, 10L, BigDecimal.valueOf(10000), LocalDateTime.now());
+
+        Payment payment = new Payment(
+                paymentId,
+                userId,
+                reservationId,
+                PaymentStatus.PAID,
+                amount,
+                LocalDateTime.now()
+        );
 
         when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
         when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // when
+        // when : 결제 취소 요청
         Payment result = paymentCommandService.cancel(paymentId);
 
-        // then
+        // then : 상태가 CANCELED이고 paidAt 필드가 null 처리되었는지 확인
+        assertThat(result.getStatus()).isEqualTo(PaymentStatus.CANCELED); // 상태 확인
         assertThat(result.getPaidAt()).isNull();
         verify(paymentRepository).save(any());
     }
 
-    @Test
     @DisplayName("이미 취소된 결제는 다시 취소할 수 없다")
+    @Test
     void cancel_payment_fail_when_already_canceled() {
-        // given
+        // given : 이미 취소된 상태
+        Long userId = 1L;
+        Long reservationId = 10L;
+        BigDecimal amount = BigDecimal.valueOf(10000);
         Long paymentId = 1L;
-        Payment canceledPayment = new Payment(paymentId, 1L, 10L, BigDecimal.valueOf(10000), null); // paidAt == null → 이미 취소됨
+
+        Payment canceledPayment = new Payment(
+                paymentId,
+                userId,
+                reservationId,
+                PaymentStatus.CANCELED,
+                amount,
+                null
+        );
 
         when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(canceledPayment));
 
@@ -128,7 +169,7 @@ public class PaymentCommandServiceTest {
     @Test
     @DisplayName("결제 ID가 존재하지 않으면 예외 발생한다.")
     void cancel_payment_fail_when_not_found() {
-        // given
+        // given : 존재하지 않는 결제 ID로 취소 요청
         Long paymentId = 1L;
 
         when(paymentRepository.findById(paymentId)).thenReturn(Optional.empty());

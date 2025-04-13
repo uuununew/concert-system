@@ -59,20 +59,48 @@ public class Concert {
         return new Concert(title, round, status, concertDateTime);
     }
 
-    /**
-     * 콘서트가 예약 가능한 상태인지 확인
-     * 현재 상태가 OPEND일 때만 가능
-     */
-    public boolean isOpened() {
-        return this.status == ConcertStatus.OPENED;
+    // 테스트 전용 팩토리 메서드
+    public static Concert withStatus(ConcertStatus status) {
+        Concert concert = new Concert();
+        concert.status = status;
+        concert.updatedAt = LocalDateTime.now();
+        return concert;
     }
 
     /**
-     * 콘서트 상태 변경 메서드
-     * - 상태 변경 시 updatedAt을 갱신
+     * 콘서트를 예약 가능 상태로 연다
      */
-    public void changeStatus(ConcertStatus newStatus) {
-        this.status = newStatus;
+    public void open() {
+        if (this.status != ConcertStatus.READY) {
+            throw new CustomException(ErrorCode.INVALID_CONCERT_STATUS, "콘서트는 READY 상태여야 열 수 있습니다.");
+        }
+        this.status = ConcertStatus.OPENED;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 콘서트를 종료한다
+     */
+    public void close() {
+        if (this.status != ConcertStatus.OPENED) {
+            throw new CustomException(ErrorCode.INVALID_CONCERT_STATUS, "콘서트는 OPENED 상태여야 종료할 수 있습니다.");
+        }
+        this.status = ConcertStatus.CLOSED;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 콘서트를 취소한다
+     */
+    public void cancel() {
+        if (this.status == ConcertStatus.CANCELED || this.status == ConcertStatus.CLOSED) {
+            throw new CustomException(ErrorCode.INVALID_CONCERT_STATUS, "READY 또는 OPENED 상태만 취소할 수 있습니다.");
+        }
+        this.status = ConcertStatus.CANCELED;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public boolean isOpened() {
+        return this.status == ConcertStatus.OPENED;
     }
 }

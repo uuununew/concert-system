@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.domain.cash;
 
+import kr.hhplus.be.server.application.cash.CashResult;
 import kr.hhplus.be.server.application.cash.CashService;
 import kr.hhplus.be.server.application.cash.ChargeCashCommand;
 import kr.hhplus.be.server.presentation.cash.CashResponse;
@@ -65,10 +66,10 @@ public class UserCashTest {
         CashService cashService = new CashService(mockUserCashRepository, mockCashHistoryRepository);
 
         // when : 존재하지 않던 유저에게 캐시 충전
-        CashResponse response = cashService.charge(new ChargeCashCommand(userId, BigDecimal.valueOf(1000)));
+        CashResult result = cashService.charge(new ChargeCashCommand(userId, BigDecimal.valueOf(1000)));
 
         // then
-        assertEquals(BigDecimal.valueOf(1000), response.balance());
+        assertEquals(BigDecimal.valueOf(1000), result.getAmount());
         verify(mockUserCashRepository).save(any(UserCash.class));
         verify(mockCashHistoryRepository).save(any());
     }

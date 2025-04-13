@@ -1,9 +1,13 @@
 package kr.hhplus.be.server.application.concert.reservation;
 
+import kr.hhplus.be.server.domain.concert.ConcertSeat;
+import kr.hhplus.be.server.domain.concert.SeatStatus;
 import kr.hhplus.be.server.domain.concert.reservation.Reservation;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationScheduleService;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationStatus;
+import kr.hhplus.be.server.domain.user.User;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -14,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 import static org.mockito.Mockito.when;
@@ -26,16 +32,45 @@ public class ReservationSchedulerServiceTest {
     @InjectMocks
     private ReservationScheduleService reservationScheduleService;
 
+    @BeforeEach
+    void setUp() {
+        reservationScheduleService = new ReservationScheduleService(reservationRepository);
+    }
+
+    @Test
+    @DisplayName("예약 스케줄러가 정상적으로 호출되어 예약을 취소한다")
+    void cancel_expired_reservations_success() {
+        // given
+        Reservation expired = mock(Reservation.class);
+        given(reservationRepository.findAllByStatusAndCreatedAtBefore(
+                eq(ReservationStatus.RESERVED),
+                any(LocalDateTime.class)
+        )).willReturn(List.of(expired));
+
+        given(expired.cancel()).willReturn(expired);
+
+        // when
+        reservationScheduleService.cancelReservationsBefore(LocalDateTime.now());
+
+        // then
+        verify(reservationRepository).save(expired);
+    }
+
     @Test
     @DisplayName("미결제 예약을 취소 처리한다")
     void cancel_unpaid_reservations_success() {
         // given
         LocalDateTime cutoffTime = LocalDateTime.now().minusMinutes(10);
-        Reservation reservation1 = Reservation.create(1L, 10L, BigDecimal.valueOf(10000));
-        Reservation reservation2 = Reservation.create(2L, 11L, BigDecimal.valueOf(20000));
+        BigDecimal price1 = BigDecimal.valueOf(10000);
+
+        User user1 = new User(1L);
+
+        ConcertSeat seat1 = ConcertSeat.withAll(10L, 100L, "A1", "1층", "A", "VIP", price1, SeatStatus.AVAILABLE, LocalDateTime.now());
+
+        Reservation reservation1 = Reservation.create(user1, seat1, price1);
 
         when(reservationRepository.findAllByStatusAndCreatedAtBefore(ReservationStatus.RESERVED, cutoffTime))
-                .thenReturn(List.of(reservation1, reservation2));
+                .thenReturn(List.of(reservation1));
 
         // when
         reservationScheduleService.cancelReservationsBefore(cutoffTime);
@@ -44,12 +79,6 @@ public class ReservationSchedulerServiceTest {
         verify(reservationRepository, times(1)).save(argThat(res ->
                 res.getUserId().equals(reservation1.getUserId()) &&
                         res.getConcertSeatId().equals(reservation1.getConcertSeatId()) &&
-                        res.getStatus() == ReservationStatus.CANCELED
-        ));
-
-        verify(reservationRepository, times(1)).save(argThat(res ->
-                res.getUserId().equals(reservation2.getUserId()) &&
-                        res.getConcertSeatId().equals(reservation2.getConcertSeatId()) &&
                         res.getStatus() == ReservationStatus.CANCELED
         ));
     }

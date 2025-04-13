@@ -1,6 +1,8 @@
 package kr.hhplus.be.server.domain.concert.reservation;
 
 import jakarta.persistence.*;
+import kr.hhplus.be.server.domain.concert.ConcertSeat;
+import kr.hhplus.be.server.domain.user.User;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
 import lombok.AccessLevel;
@@ -17,18 +19,18 @@ public class Reservation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private final Long id;
+    private Long id;
 
-    private final Long userId;
-    private final Long concertSeatId;
-    private final BigDecimal price;
+    private Long userId;
+    private Long concertSeatId;
+    private BigDecimal price;
 
     @Enumerated(EnumType.STRING)
-    private final ReservationStatus status;
+    private ReservationStatus status;
 
-    private final LocalDateTime paidAt;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private LocalDateTime paidAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     // 생성자
     public Reservation(
@@ -52,15 +54,11 @@ public class Reservation {
     }
 
     // 정적 팩토리 메서드: 새 예약 생성
-    public static Reservation create(
-            Long userId,
-            Long concertSeatId,
-            BigDecimal price
-    ) {
+    public static Reservation create(User user, ConcertSeat seat, BigDecimal price) {
         return new Reservation(
                 null,
-                userId,
-                concertSeatId,
+                user.getId(),
+                seat.getId(),
                 price,
                 ReservationStatus.RESERVED,
                 null,
@@ -70,7 +68,7 @@ public class Reservation {
     }
 
     // 결제 완료 처리
-    public Reservation markPaid() {
+    public Reservation pay() {
         if (this.status != ReservationStatus.RESERVED) {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "RESERVED 상태일 때만 결제 가능합니다.");
         }
