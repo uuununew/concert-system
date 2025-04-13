@@ -1,11 +1,14 @@
 package kr.hhplus.be.server.application.concert.reservation;
 
+import kr.hhplus.be.server.domain.concert.ConcertSeat;
+import kr.hhplus.be.server.domain.concert.ConcertSeatRepository;
 import kr.hhplus.be.server.domain.concert.reservation.Reservation;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationStatus;
 import kr.hhplus.be.server.domain.concert.reservation.token.QueueToken;
 import kr.hhplus.be.server.application.concert.reservation.token.TokenCommandService;
 import kr.hhplus.be.server.domain.concert.reservation.token.TokenRepository;
+import kr.hhplus.be.server.domain.user.User;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +21,7 @@ import java.util.Optional;
 public class ReservationCommandService {
 
     private final ReservationRepository reservationRepository;
+    private final ConcertSeatRepository concertSeatRepository;
     private final TokenCommandService tokenCommandService;
     private final TokenRepository tokenRepository;
 
@@ -45,14 +49,16 @@ public class ReservationCommandService {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "이미 예약된 좌석입니다.");
         }
 
-        //3: 예약 생성 및 저장
-        Reservation reservation = Reservation.create(
-                command.userId(),
-                command.concertSeatId(),
-                command.price()
-        );
+        // 3 : concertSeat 객체 조회
+        ConcertSeat seat = concertSeatRepository.findById(command.concertSeatId())
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 좌석 정보를 찾을 수 없습니다."));
 
-        // 4: 토큰 사용 완료 처리
+        // 4 : 예약 생성 (User는 임시 도메인으로 ID 기반 생성)
+        User user = User.from(command.userId());
+        Reservation reservation = Reservation.create(user, seat, command.price());
+
+
+        // 5: 토큰 사용 완료 처리
         tokenCommandService.complete(command.userId());
 
         return reservationRepository.save(reservation);

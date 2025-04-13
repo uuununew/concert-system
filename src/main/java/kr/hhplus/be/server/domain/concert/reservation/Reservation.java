@@ -1,6 +1,8 @@
 package kr.hhplus.be.server.domain.concert.reservation;
 
 import jakarta.persistence.*;
+import kr.hhplus.be.server.domain.concert.ConcertSeat;
+import kr.hhplus.be.server.domain.user.User;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
 import lombok.AccessLevel;
@@ -52,15 +54,11 @@ public class Reservation {
     }
 
     // 정적 팩토리 메서드: 새 예약 생성
-    public static Reservation create(
-            Long userId,
-            Long concertSeatId,
-            BigDecimal price
-    ) {
+    public static Reservation create(User user, ConcertSeat seat, BigDecimal price) {
         return new Reservation(
                 null,
-                userId,
-                concertSeatId,
+                user.getId(),
+                seat.getId(),
                 price,
                 ReservationStatus.RESERVED,
                 null,
