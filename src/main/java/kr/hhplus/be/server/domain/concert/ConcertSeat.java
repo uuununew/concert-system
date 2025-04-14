@@ -23,7 +23,10 @@ public class ConcertSeat {
 
     private String seatNumber;
     private String section;
+
+    @Column(name = "seat_row")
     private String row;
+
     private String grade;
 
     private BigDecimal price;
