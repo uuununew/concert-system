@@ -1,9 +1,7 @@
 package kr.hhplus.be.server.application.concert.reservation;
 
 import kr.hhplus.be.server.application.token.TokenCommandService;
-import kr.hhplus.be.server.domain.concert.ConcertSeat;
-import kr.hhplus.be.server.domain.concert.ConcertSeatRepository;
-import kr.hhplus.be.server.domain.concert.SeatStatus;
+import kr.hhplus.be.server.domain.concert.*;
 import kr.hhplus.be.server.domain.concert.reservation.Reservation;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationStatus;
@@ -18,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,11 +59,15 @@ public class ReservationCommandServiceTest {
         // given
         CreateReservationCommand command = new CreateReservationCommand(1L, 2L, BigDecimal.valueOf(10000));
 
+        Concert concert = new Concert("테스트 콘서트", 1, ConcertStatus.READY, LocalDateTime.now());
+
+        ConcertSeat seat = ConcertSeat.withAll(
+                2L, concert, "A1", "1층", "A", "VIP", BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now());
+
         when(reservationRepository.findByConcertSeatIdAndStatus(2L, ReservationStatus.RESERVED))
                 .thenReturn(Optional.empty());
         when(concertSeatRepository.findById(2L))
-                .thenReturn(Optional.of(new ConcertSeat(2L, 1L, "A1", "1층", "A", "VIP",
-                        BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, null)));
+                .thenReturn(Optional.of(seat));
         when(reservationRepository.save(any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 

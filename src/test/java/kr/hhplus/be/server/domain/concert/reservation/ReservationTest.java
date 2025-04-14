@@ -1,7 +1,9 @@
 package kr.hhplus.be.server.domain.concert.reservation;
 
 import kr.hhplus.be.server.application.concert.reservation.ReservationCommandService;
+import kr.hhplus.be.server.domain.concert.Concert;
 import kr.hhplus.be.server.domain.concert.ConcertSeat;
+import kr.hhplus.be.server.domain.concert.ConcertStatus;
 import kr.hhplus.be.server.domain.concert.SeatStatus;
 import kr.hhplus.be.server.domain.concert.reservation.Reservation;
 import kr.hhplus.be.server.domain.concert.reservation.ReservationRepository;
@@ -30,12 +32,17 @@ public class ReservationTest {
     @InjectMocks
     private ReservationCommandService reservationCommandService;
 
+    private Concert dummyConcert() {
+        return Concert.withStatus(ConcertStatus.READY); // 또는 필요 시 withAll(...) 만들어도 OK
+    }
+
     @Test
     @DisplayName("정상 예약 생성 시 RESERVED 상태로 생성된다")
     void create_success() {
         User user = new User(1L);
+        Concert concert = dummyConcert();
         ConcertSeat seat = ConcertSeat.withAll(
-                10L, 100L, "A1", "1층", "A", "VIP",
+                10L, concert, "A1", "1층", "A", "VIP",
                 BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now()
         );
         BigDecimal amount = BigDecimal.valueOf(10000);
@@ -52,8 +59,9 @@ public class ReservationTest {
     @DisplayName("RESERVED 상태의 예약은 CANCELED 상태로 변경 가능")
     void cancel_success() {
         User user = new User(1L);
+        Concert concert = dummyConcert();
         ConcertSeat seat = ConcertSeat.withAll(
-                10L, 100L, "A1", "1층", "A", "VIP",
+                10L, concert, "A1", "1층", "A", "VIP",
                 BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now()
         );
         BigDecimal amount = BigDecimal.valueOf(10000);
@@ -69,8 +77,9 @@ public class ReservationTest {
     @DisplayName("PAID 상태의 예약은 취소 불가")
     void cancel_fail_when_paid() {
         User user = new User(1L);
+        Concert concert = dummyConcert();
         ConcertSeat seat = ConcertSeat.withAll(
-                10L, 100L, "A1", "1층", "A", "VIP",
+                10L, concert, "A1", "1층", "A", "VIP",
                 BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now()
         );
         BigDecimal amount = BigDecimal.valueOf(10000);
@@ -86,8 +95,9 @@ public class ReservationTest {
     @DisplayName("RESERVED 상태의 예약은 PAID 상태로 변경 가능")
     void markPaid_success() {
         User user = new User(1L);
+        Concert concert = dummyConcert();
         ConcertSeat seat = ConcertSeat.withAll(
-                10L, 100L, "A1", "1층", "A", "VIP",
+                10L, concert, "A1", "1층", "A", "VIP",
                 BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now()
         );
         BigDecimal amount = BigDecimal.valueOf(10000);

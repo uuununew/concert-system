@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.application.concert.reservation;
 
+import kr.hhplus.be.server.domain.concert.Concert;
 import kr.hhplus.be.server.domain.concert.ConcertSeat;
 import kr.hhplus.be.server.domain.concert.SeatStatus;
 import kr.hhplus.be.server.domain.concert.reservation.Reservation;
@@ -63,11 +64,13 @@ public class ReservationSchedulerServiceTest {
         LocalDateTime cutoffTime = LocalDateTime.now().minusMinutes(10);
         BigDecimal price1 = BigDecimal.valueOf(10000);
 
-        User user1 = new User(1L);
+        User user = new User(1L);
 
-        ConcertSeat seat1 = ConcertSeat.withAll(10L, 100L, "A1", "1층", "A", "VIP", price1, SeatStatus.AVAILABLE, LocalDateTime.now());
+        Concert concert = Concert.withStatus(kr.hhplus.be.server.domain.concert.ConcertStatus.READY);
+        ConcertSeat seat = ConcertSeat.withAll(
+                10L, concert, "A1", "1층", "A", "VIP", price1, SeatStatus.AVAILABLE, LocalDateTime.now());
 
-        Reservation reservation1 = Reservation.create(user1, seat1, price1);
+        Reservation reservation1 = Reservation.create(user, seat, price1);
 
         when(reservationRepository.findAllByStatusAndCreatedAtBefore(ReservationStatus.RESERVED, cutoffTime))
                 .thenReturn(List.of(reservation1));

@@ -1,6 +1,7 @@
 package kr.hhplus.be.server.application.concert.payment;
 
 import kr.hhplus.be.server.application.cash.CashCommandService;
+import kr.hhplus.be.server.domain.concert.Concert;
 import kr.hhplus.be.server.domain.concert.ConcertSeat;
 import kr.hhplus.be.server.domain.concert.SeatStatus;
 import kr.hhplus.be.server.domain.concert.payment.Payment;
@@ -52,7 +53,9 @@ public class PaymentCommandServiceTest {
         CreatePaymentCommand command = new CreatePaymentCommand(userId, reservationId, amount);
 
         User user = new User(userId);
-        ConcertSeat seat = ConcertSeat.withAll(100L, 1L, "A1", "1층", "A", "VIP", amount, SeatStatus.RESERVED, LocalDateTime.now());
+        Concert concert = Concert.withStatus(kr.hhplus.be.server.domain.concert.ConcertStatus.READY);
+        ConcertSeat seat = ConcertSeat.withAll(
+                100L, concert, "A1", "1층", "A", "VIP", amount, SeatStatus.RESERVED, LocalDateTime.now());
         Reservation reserved = Reservation.create(user, seat, amount);
 
         when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reserved));
@@ -99,7 +102,9 @@ public class PaymentCommandServiceTest {
         CreatePaymentCommand command = new CreatePaymentCommand(userId, reservationId, amount);
 
         User user = new User(userId);
-        ConcertSeat seat = ConcertSeat.withAll(1L, 1L, "A1", "1층", "A", "VIP", amount, SeatStatus.AVAILABLE, LocalDateTime.now());
+        Concert concert = Concert.withStatus(kr.hhplus.be.server.domain.concert.ConcertStatus.READY);
+        ConcertSeat seat = ConcertSeat.withAll(
+                1L, concert, "A1", "1층", "A", "VIP", amount, SeatStatus.AVAILABLE, LocalDateTime.now());
         Reservation paid = Reservation.create(user, seat, amount).pay();
 
         when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(paid));

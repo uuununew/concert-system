@@ -13,14 +13,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ConcertSeatTest {
 
+    private Concert dummyConcert() {
+        return Concert.withAll(1L, "제니 콘서트", 1, ConcertStatus.READY, LocalDateTime.now());
+    }
+
     @Test
     @DisplayName("AVAILABLE 상태의 좌석은 RESERVED 상태로 전환할 수 있다")
     void reserve_success() {
         // given : 예약 가능한 AVAILABLE 상태의 좌석 생성
+        Concert concert = Concert.withStatus(ConcertStatus.READY);
         ConcertSeat seat = ConcertSeat.withAll(
-                1L,1L, "A1", "1층", "A", "VIP", BigDecimal.valueOf(100000),
+                1L, concert, "A1", "1층", "A", "VIP", BigDecimal.valueOf(100000),
                 SeatStatus.AVAILABLE, LocalDateTime.now()
         );
+
 
         // when : 좌석 예약을 시도
         seat.reserve();
@@ -34,9 +40,8 @@ public class ConcertSeatTest {
     void reserve_fail_when_not_available() {
         // given : 이미 SOLD_OUT 상태인 좌석 생성
         ConcertSeat seat = ConcertSeat.withAll(
-                1L,1L, "A1", "1층", "A", "VIP", new BigDecimal("100000"),
-                SeatStatus.SOLD_OUT, LocalDateTime.now()
-        );
+                1L, dummyConcert(), "A1", "1층", "A", "VIP",
+                BigDecimal.valueOf(100000), SeatStatus.SOLD_OUT, LocalDateTime.now());
 
         // when//then : 예약 시도 시 예외 발생
         assertThatThrownBy(seat::reserve)
@@ -49,9 +54,8 @@ public class ConcertSeatTest {
     void markSoldOut_success() {
         // given : RESERVED 상태의 좌석 생성
         ConcertSeat seat = ConcertSeat.withAll(
-                1L,1L, "A1", "1층", "A", "VIP", new BigDecimal("100000"),
-                SeatStatus.RESERVED, LocalDateTime.now()
-        );
+                1L, dummyConcert(), "A1", "1층", "A", "VIP",
+                BigDecimal.valueOf(100000), SeatStatus.RESERVED, LocalDateTime.now());
 
         // when : 결제 완료 처리 시도
         seat.markSoldOut();
@@ -65,9 +69,8 @@ public class ConcertSeatTest {
     void markSoldOut_fail_when_not_reserved() {
         // given : 현재 상태가 AVAILABLE인 좌석
         ConcertSeat seat = ConcertSeat.withAll(
-                1L,1L, "A1", "1층", "A", "VIP", new BigDecimal("100000"),
-                SeatStatus.AVAILABLE, LocalDateTime.now()
-        );
+                1L, dummyConcert(), "A1", "1층", "A", "VIP",
+                BigDecimal.valueOf(100000), SeatStatus.AVAILABLE, LocalDateTime.now());
 
         // when//then : 결제 완료 시도 시 예외
         assertThatThrownBy(seat::markSoldOut)
