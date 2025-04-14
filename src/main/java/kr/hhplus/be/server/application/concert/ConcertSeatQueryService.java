@@ -32,7 +32,7 @@ public class ConcertSeatQueryService {
      */
     public List<ConcertSeat> getSeats(Long concertId) {
         validateConcert(concertId);
-        return concertSeatRepository.findAllByConcertId(concertId);
+        return concertSeatRepository.findAllByConcert_Id(concertId);
     }
 
     /**
@@ -43,7 +43,7 @@ public class ConcertSeatQueryService {
      */
     public List<ConcertSeat> getAvailableSeats(Long concertId) {
         validateConcert(concertId);
-        return concertSeatRepository.findAllByConcertIdAndStatus(concertId, SeatStatus.AVAILABLE);
+        return concertSeatRepository.findAllByConcert_IdAndStatus(concertId, SeatStatus.AVAILABLE);
     }
 
     /**
@@ -54,7 +54,7 @@ public class ConcertSeatQueryService {
      */
     public int getTotalSeatCount(Long concertId) {
         validateConcert(concertId);
-        return concertSeatRepository.findAllByConcertId(concertId).size();
+        return concertSeatRepository.findAllByConcert_Id(concertId).size();
     }
 
     /**

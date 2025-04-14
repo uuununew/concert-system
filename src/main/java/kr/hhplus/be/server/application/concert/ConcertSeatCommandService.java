@@ -31,7 +31,7 @@ public class ConcertSeatCommandService {
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 ID의 콘서트가 존재하지 않습니다."));
 
         ConcertSeat seat = ConcertSeat.of(
-                concert.getId(),
+                concert,
                 command.seatNumber(),
                 command.section(),
                 command.row(),
