@@ -50,6 +50,7 @@ dependencies {
 	testImplementation("org.testcontainers:junit-jupiter")
 	testImplementation("org.testcontainers:mysql")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	testImplementation ("com.h2database:h2")
 
 	// Lombok 추가
 	compileOnly ("org.projectlombok:lombok")
@@ -63,4 +64,5 @@ dependencies {
 tasks.withType<Test> {
 	useJUnitPlatform()
 	systemProperty("user.timezone", "UTC")
+	systemProperty ("spring.profiles.active", "test")
 }
