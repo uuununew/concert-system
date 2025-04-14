@@ -28,9 +28,15 @@ public class TokenController {
      * - 기본 상태는 WAITING이며, 이후 활성화 요청이 필요
      */
     @PostMapping("/{userId}")
-    public ResponseEntity<QueueToken> issue(@PathVariable Long userId) {
+    public ResponseEntity<QueueTokenStatusResponse> issue(@PathVariable Long userId) {
         QueueToken token = tokenCommandService.issue(userId);
-        return ResponseEntity.ok(token);
+        int position = tokenQueryService.getWaitingPosition(userId).orElse(0);
+
+        return ResponseEntity.ok(new QueueTokenStatusResponse(
+                userId,
+                token.getStatus(),
+                position
+        ));
     }
 
     /**
