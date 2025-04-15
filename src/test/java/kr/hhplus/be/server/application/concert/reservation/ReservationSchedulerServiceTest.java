@@ -81,7 +81,7 @@ public class ReservationSchedulerServiceTest {
         // then
         verify(reservationRepository, times(1)).save(argThat(res ->
                 res.getUserId().equals(reservation1.getUserId()) &&
-                        res.getConcertSeatId().equals(reservation1.getConcertSeatId()) &&
+                        res.getConcertSeat().equals(reservation1.getConcertSeat()) &&
                         res.getStatus() == ReservationStatus.CANCELED
         ));
     }

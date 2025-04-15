@@ -58,25 +58,21 @@ public class ReservationCommandServiceTest {
     void reserve_success() {
         // given
         CreateReservationCommand command = new CreateReservationCommand(1L, 2L, BigDecimal.valueOf(10000));
-
         Concert concert = new Concert("테스트 콘서트", 1, ConcertStatus.READY, LocalDateTime.now());
 
         ConcertSeat seat = ConcertSeat.withAll(
                 2L, concert, "A1", "1층", "A", "VIP", BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now());
 
-        when(reservationRepository.findByConcertSeatIdAndStatus(2L, ReservationStatus.RESERVED))
-                .thenReturn(Optional.empty());
-        when(concertSeatRepository.findById(2L))
-                .thenReturn(Optional.of(seat));
-        when(reservationRepository.save(any()))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(concertSeatRepository.findById(2L)).thenReturn(Optional.of(seat));
+        when(reservationRepository.findByConcertSeatAndStatus(seat, ReservationStatus.RESERVED)).thenReturn(Optional.empty());
+        when(reservationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // when
         Reservation result = reservationCommandService.reserve(command);
 
         // then
         assertThat(result.getUserId()).isEqualTo(1L);
-        assertThat(result.getConcertSeatId()).isEqualTo(2L);
+        assertThat(result.getConcertSeat().getId()).isEqualTo(2L);
         assertThat(result.getStatus()).isEqualTo(ReservationStatus.RESERVED);
         verify(reservationRepository).save(any());
     }
@@ -86,10 +82,18 @@ public class ReservationCommandServiceTest {
     void reserve_fail_when_already_reserved() {
         // given
         CreateReservationCommand command = new CreateReservationCommand(1L, 2L, BigDecimal.valueOf(10000));
-        when(reservationRepository.findByConcertSeatIdAndStatus(2L, ReservationStatus.RESERVED))
+        Concert concert = new Concert("테스트 콘서트", 1, ConcertStatus.READY, LocalDateTime.now());
+        ConcertSeat seat = ConcertSeat.withAll(
+                2L, concert, "A1", "1층", "A", "VIP",
+                BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now()
+        );
+
+        //when
+        when(concertSeatRepository.findById(2L)).thenReturn(Optional.of(seat));
+        when(reservationRepository.findByConcertSeatAndStatus(seat, ReservationStatus.RESERVED))
                 .thenReturn(Optional.of(mock(Reservation.class)));
 
-        // expect
+        // then
         assertThatThrownBy(() -> reservationCommandService.reserve(command))
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining("이미 예약된 좌석입니다.");

@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 public class ReservationTest {
@@ -52,7 +53,7 @@ public class ReservationTest {
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.RESERVED);
         assertThat(reservation.getPrice()).isEqualTo(amount);
         assertThat(reservation.getUserId()).isEqualTo(user.getId());
-        assertThat(reservation.getConcertSeatId()).isEqualTo(seat.getId());
+        assertThat(reservation.getConcertSeat().getId()).isEqualTo(seat.getId());
     }
 
     @Test
@@ -114,11 +115,10 @@ public class ReservationTest {
     @Test
     @DisplayName("RESERVED 상태가 아니면 결제 완료로 변경할 수 없다")
     void markPaid_fail_when_not_reserved() {
+        ConcertSeat seat = mock(ConcertSeat.class); // seat은 실제 구현 필요 없음
         Reservation reservation = new Reservation(
-                1L, 1L, 1L, BigDecimal.valueOf(10000),
-                ReservationStatus.CANCELED, null,
-                LocalDateTime.now(), LocalDateTime.now()
-        );
+                1L, 1L,seat,
+                BigDecimal.valueOf(10000), ReservationStatus.CANCELED, LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
 
         assertThatThrownBy(reservation::pay)
                 .isInstanceOf(CustomException.class)
