@@ -4,10 +4,12 @@ import kr.hhplus.be.server.domain.concert.ConcertSeat;
 import kr.hhplus.be.server.domain.concert.ConcertSeatRepository;
 import kr.hhplus.be.server.domain.concert.SeatStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 @RequiredArgsConstructor
 public class ConcertSeatRepositoryImpl implements ConcertSeatRepository {
 
