@@ -40,20 +40,20 @@ public class ReservationCommandService {
             throw new CustomException(ErrorCode.NOT_FOUND, "토큰 정보가 없습니다.");
         }
 
-        // 2: 이미 예약된 좌석인지 확인
+        // 2: concertSeat 객체 조회
+        ConcertSeat seat = concertSeatRepository.findById(command.concertSeatId())
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 좌석 정보를 찾을 수 없습니다."));
+
+        // 3: 이미 예약된 좌석인지 확인
         boolean alreadyReserved = reservationRepository
-                .findByConcertSeatIdAndStatus(command.concertSeatId(), ReservationStatus.RESERVED)
+                .findByConcertSeatAndStatus(seat, ReservationStatus.RESERVED)
                 .isPresent();
 
         if (alreadyReserved) {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "이미 예약된 좌석입니다.");
         }
 
-        // 3 : concertSeat 객체 조회
-        ConcertSeat seat = concertSeatRepository.findById(command.concertSeatId())
-                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 좌석 정보를 찾을 수 없습니다."));
-
-        // 4 : 예약 생성 (User는 임시 도메인으로 ID 기반 생성)
+        // 4 : 예약 생성
         User user = User.from(command.userId());
         Reservation reservation = Reservation.create(user, seat, command.price());
 

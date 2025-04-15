@@ -22,7 +22,11 @@ public class Reservation {
     private Long id;
 
     private Long userId;
-    private Long concertSeatId;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "concert_seat_id", nullable = false)
+    private ConcertSeat concertSeat;
+
     private BigDecimal price;
 
     @Enumerated(EnumType.STRING)
@@ -36,7 +40,7 @@ public class Reservation {
     public Reservation(
             Long id,
             Long userId,
-            Long concertSeatId,
+            ConcertSeat concertSeat,
             BigDecimal price,
             ReservationStatus status,
             LocalDateTime paidAt,
@@ -45,7 +49,7 @@ public class Reservation {
     ) {
         this.id = id;
         this.userId = userId;
-        this.concertSeatId = concertSeatId;
+        this.concertSeat = concertSeat;
         this.price = price;
         this.status = status;
         this.paidAt = paidAt;
@@ -58,7 +62,7 @@ public class Reservation {
         return new Reservation(
                 null,
                 user.getId(),
-                seat.getId(),
+                seat,
                 price,
                 ReservationStatus.RESERVED,
                 null,
@@ -75,7 +79,7 @@ public class Reservation {
         return new Reservation(
                 this.id,
                 this.userId,
-                this.concertSeatId,
+                this.concertSeat,
                 this.price,
                 ReservationStatus.PAID,
                 LocalDateTime.now(),
@@ -92,7 +96,7 @@ public class Reservation {
         return new Reservation(
                 this.id,
                 this.userId,
-                this.concertSeatId,
+                this.concertSeat,
                 this.price,
                 ReservationStatus.CANCELED,
                 this.paidAt,

@@ -20,7 +20,7 @@ public record ReservationResponse(
         return new ReservationResponse(
                 reservation.getId(),
                 reservation.getUserId(),
-                reservation.getConcertSeatId(),
+                reservation.getConcertSeat().getId(),
                 reservation.getPrice(),
                 reservation.getStatus(),
                 reservation.getPaidAt(),
