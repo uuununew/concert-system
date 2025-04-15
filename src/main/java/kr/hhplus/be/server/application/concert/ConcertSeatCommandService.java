@@ -22,9 +22,6 @@ public class ConcertSeatCommandService {
     /**
      * 좌석을 등록합니다.
      * 콘서트가 존재하지 않으면 예외가 발생합니다.
-     *
-     * @param command 좌석 생성 커맨드
-     * @return 생성된 좌석
      */
     public ConcertSeat registerSeat(CreateConcertSeatCommand command) {
         Concert concert = concertRepository.findById(command.concertId())
@@ -45,10 +42,6 @@ public class ConcertSeatCommandService {
     /**
      * 좌석 정보를 수정합니다.
      * 좌석이 존재하지 않으면 예외가 발생합니다.
-     *
-     * @param seatId 좌석 ID
-     * @param command 수정할 정보가 담긴 커맨드
-     * @return 수정된 좌석
      */
     public ConcertSeat updateSeat(Long seatId, UpdateConcertSeatCommand command) {
         ConcertSeat seat = concertSeatRepository.findById(seatId)
