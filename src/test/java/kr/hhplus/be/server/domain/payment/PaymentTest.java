@@ -1,7 +1,5 @@
 package kr.hhplus.be.server.domain.payment;
 
-import kr.hhplus.be.server.domain.payment.Payment;
-import kr.hhplus.be.server.domain.payment.PaymentStatus;
 import kr.hhplus.be.server.support.exception.CustomException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,25 +28,30 @@ public class PaymentTest {
         assertThat(payment.getReservationId()).isEqualTo(reservationId);
         assertThat(payment.getAmount()).isEqualTo(amount);
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.READY);
-        assertThat(payment.getPaidAt()).isNull(); // 결제되기 전이므로 null
+        assertThat(payment.getPaidAt()).isNull(); 
     }
 
     @Test
     @DisplayName("READY 상태의 결제를 pay() 하면 PAID 상태로 전이되고 결제 시간이 기록된다")
     void pay_success() {
+        // given
         Payment payment = Payment.create(1L, 10L, BigDecimal.valueOf(10000));
 
-        Payment paid = payment.pay();
+        // when
+        payment.pay();
 
-        assertThat(paid.getStatus()).isEqualTo(PaymentStatus.PAID);
-        assertThat(paid.getPaidAt()).isNotNull();
+        // then
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(payment.getPaidAt()).isNotNull();
     }
 
     @Test
     @DisplayName("READY 상태가 아닌 결제는 pay() 할 수 없다")
     void pay_fail_when_not_ready() {
-        Payment payment = new Payment(1L, 1L, 10L, PaymentStatus.FAILED, BigDecimal.valueOf(10000), null);
+        // given
+        Payment payment = Payment.withAll(1L, 1L, 10L, PaymentStatus.FAILED, BigDecimal.valueOf(10000), null);
 
+        // when // then
         assertThatThrownBy(payment::pay)
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining("READY 상태일 때만 결제가 가능합니다");
@@ -57,18 +60,25 @@ public class PaymentTest {
     @Test
     @DisplayName("PAID 상태의 결제는 cancel() 하면 CANCELED 상태로 전이된다")
     void cancel_success() {
-        Payment paid = new Payment(1L, 1L, 10L, PaymentStatus.PAID, BigDecimal.valueOf(10000), LocalDateTime.now());
+        // given
+        Payment payment = Payment.withAll(
+                1L, 1L, 10L, PaymentStatus.PAID, BigDecimal.valueOf(10000), LocalDateTime.now());
 
-        Payment canceled = paid.cancel();
+        // when
+        payment.cancel(); // 반환값 없이 상태만 바뀜
 
-        assertThat(canceled.getStatus()).isEqualTo(PaymentStatus.CANCELED);
+        // then
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CANCELED);
+        assertThat(payment.getPaidAt()).isNull();
     }
 
     @Test
     @DisplayName("PAID 상태가 아닌 결제를 cancel() 하면 예외가 발생한다")
     void cancel_fail_when_not_paid() {
+        // given
         Payment payment = Payment.create(1L, 10L, BigDecimal.valueOf(10000)); // status: READY
 
+        // when // then
         assertThatThrownBy(payment::cancel)
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining("결제된 건만 취소할 수 있습니다");
@@ -77,18 +87,23 @@ public class PaymentTest {
     @Test
     @DisplayName("READY 상태의 결제를 fail() 하면 FAILED 상태로 전이된다")
     void fail_success() {
+        // given
         Payment payment = Payment.create(1L, 10L, BigDecimal.valueOf(10000));
 
-        Payment failed = payment.fail();
+        // when
+        payment.fail();
 
-        assertThat(failed.getStatus()).isEqualTo(PaymentStatus.FAILED);
+        //then
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
     }
 
     @Test
     @DisplayName("READY 상태가 아닌 결제를 fail() 하면 예외가 발생한다")
     void fail_fail_when_not_ready() {
-        Payment payment = new Payment(1L, 1L, 10L, PaymentStatus.PAID, BigDecimal.valueOf(10000), LocalDateTime.now());
+        // given
+        Payment payment = Payment.withAll(1L, 1L, 10L, PaymentStatus.PAID, BigDecimal.valueOf(10000), LocalDateTime.now());
 
+        // when // then
         assertThatThrownBy(payment::fail)
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining("결제가 실패 처리될 수 없는 상태입니다");

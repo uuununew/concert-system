@@ -126,7 +126,7 @@ public class PaymentCommandServiceTest {
         BigDecimal amount = BigDecimal.valueOf(10000);
         Long paymentId = 1L;
 
-        Payment payment = new Payment(
+        Payment payment = Payment.withAll(
                 paymentId,
                 userId,
                 reservationId,
@@ -142,7 +142,7 @@ public class PaymentCommandServiceTest {
         Payment result = paymentCommandService.cancel(paymentId);
 
         // then : 상태가 CANCELED이고 paidAt 필드가 null 처리되었는지 확인
-        assertThat(result.getStatus()).isEqualTo(PaymentStatus.CANCELED); // 상태 확인
+        assertThat(result.getStatus()).isEqualTo(PaymentStatus.CANCELED);
         assertThat(result.getPaidAt()).isNull();
         verify(paymentRepository).save(any());
     }
@@ -156,7 +156,7 @@ public class PaymentCommandServiceTest {
         BigDecimal amount = BigDecimal.valueOf(10000);
         Long paymentId = 1L;
 
-        Payment canceledPayment = new Payment(
+        Payment canceledPayment = Payment.withAll(
                 paymentId,
                 userId,
                 reservationId,
@@ -170,7 +170,7 @@ public class PaymentCommandServiceTest {
         // when / then
         assertThatThrownBy(() -> paymentCommandService.cancel(paymentId))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("이미 취소된 결제입니다.");
+                .hasMessageContaining("결제된 건만 취소할 수 있습니다.");
     }
 
     @Test

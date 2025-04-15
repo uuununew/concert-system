@@ -34,19 +34,16 @@ public class PaymentCommandService {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "결제 가능한 상태가 아닙니다.");
         }
 
-        // use - 금액 차감
+        // 금액 차감
         cashCommandService.use(new UseCashCommand(command.userId(), command.amount()));
 
-        // 예약 상태를 PAID로 변경
-        Reservation paidReservation = reservation.pay();
-        reservationRepository.save(paidReservation);
+        // 예약 상태 변경
+        reservation.pay();
+        reservationRepository.save(reservation);
 
-        // 결제 정보 생성 및 저장
-        Payment payment = Payment.create(
-                command.userId(),
-                paidReservation.getId(),
-                command.amount()
-        );
+        // 결제 객체 생성 및 결제 처리
+        Payment payment = Payment.create(command.userId(), reservation.getId(), command.amount());
+        payment.pay(); // 상태를 READY → PAID 로 변경
         return paymentRepository.save(payment);
     }
 
@@ -57,10 +54,7 @@ public class PaymentCommandService {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "결제 정보를 찾을 수 없습니다."));
 
-        if (payment.getPaidAt() == null) {
-            throw new CustomException(ErrorCode.INVALID_REQUEST, "이미 취소된 결제입니다.");
-        }
-
-        return paymentRepository.save(payment.cancel());
+        payment.cancel(); // 내부 상태 변경
+        return paymentRepository.save(payment);
     }
 }

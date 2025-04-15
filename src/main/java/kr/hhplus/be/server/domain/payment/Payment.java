@@ -27,7 +27,18 @@ public class Payment {
     private BigDecimal amount;
     private LocalDateTime paidAt;
 
-    public Payment(
+    // 정적 팩토리 메서드 생성
+    public static Payment create(Long userId, Long reservationId, BigDecimal amount) {
+        Payment payment = new Payment();
+        payment.userId = userId;
+        payment.reservationId = reservationId;
+        payment.amount = amount;
+        payment.status = PaymentStatus.READY;
+        return payment;
+    }
+
+    // 테스트용 팩토리 메서드 추가
+    public static Payment withAll(
             Long id,
             Long userId,
             Long reservationId,
@@ -35,36 +46,39 @@ public class Payment {
             BigDecimal amount,
             LocalDateTime paidAt
     ) {
-        this.id = id;
-        this.userId = userId;
-        this.reservationId = reservationId;
-        this.status = status;
-        this.amount = amount;
-        this.paidAt = paidAt;
+        Payment payment = new Payment();
+        payment.id = id;
+        payment.userId = userId;
+        payment.reservationId = reservationId;
+        payment.status = status;
+        payment.amount = amount;
+        payment.paidAt = paidAt;
+        return payment;
     }
 
-    public static Payment create(Long userId, Long reservationId, BigDecimal amount) {
-        return new Payment(null, userId, reservationId, PaymentStatus.READY, amount, null);
-    }
-
-    public Payment pay() {
+    // 결제 처리
+    public void pay() {
         if (this.status != PaymentStatus.READY) {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "READY 상태일 때만 결제가 가능합니다.");
         }
-        return new Payment(this.id, this.userId, this.reservationId, PaymentStatus.PAID, this.amount, LocalDateTime.now());
+        this.status = PaymentStatus.PAID;
+        this.paidAt = LocalDateTime.now();
     }
 
-    public Payment cancel() {
+    // 결제 취소
+    public void cancel() {
         if (this.status != PaymentStatus.PAID) {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "결제된 건만 취소할 수 있습니다.");
         }
-        return new Payment(this.id, this.userId, this.reservationId, PaymentStatus.CANCELED, this.amount, null);
+        this.status = PaymentStatus.CANCELED;
+        this.paidAt = null;
     }
 
-    public Payment fail() {
+    // 결제 실패
+    public void fail() {
         if (this.status != PaymentStatus.READY) {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "결제가 실패 처리될 수 없는 상태입니다.");
         }
-        return new Payment(this.id, this.userId, this.reservationId, PaymentStatus.FAILED, this.amount, this.paidAt);
+        this.status = PaymentStatus.FAILED;
     }
 }

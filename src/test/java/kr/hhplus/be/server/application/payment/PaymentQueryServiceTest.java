@@ -34,8 +34,8 @@ public class PaymentQueryServiceTest {
         // given
         Long userId = 1L;
         List<Payment> payments = List.of(
-                new Payment(1L, userId, 10L, PaymentStatus.PAID, BigDecimal.valueOf(10000), LocalDateTime.now()),
-                new Payment(2L, userId, 11L, PaymentStatus.PAID, BigDecimal.valueOf(15000), LocalDateTime.now())
+                Payment.withAll(1L, userId, 10L, PaymentStatus.PAID, BigDecimal.valueOf(10000), LocalDateTime.now()),
+                Payment.withAll(2L, userId, 11L, PaymentStatus.PAID, BigDecimal.valueOf(15000), LocalDateTime.now())
         );
 
         when(paymentRepository.findByUserId(userId)).thenReturn(payments);
@@ -48,5 +48,4 @@ public class PaymentQueryServiceTest {
         assertThat(result.get(0).getUserId()).isEqualTo(userId);
         verify(paymentRepository, times(1)).findByUserId(userId);
     }
-
 }
