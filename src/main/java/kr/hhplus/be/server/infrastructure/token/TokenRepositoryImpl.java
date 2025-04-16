@@ -3,48 +3,48 @@ package kr.hhplus.be.server.infrastructure.token;
 import kr.hhplus.be.server.domain.token.QueueToken;
 import kr.hhplus.be.server.domain.token.TokenRepository;
 import kr.hhplus.be.server.domain.token.TokenStatus;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
-public class InMemoryTokenRepository implements TokenRepository {
+@Repository
+@RequiredArgsConstructor
+public class TokenRepositoryImpl implements TokenRepository {
 
-    private final Map<Long, QueueToken> store = new ConcurrentHashMap<>();
+    private final QueueTokenJpaRepository jpaRepository;
 
     @Override
     public QueueToken enqueue(Long userId) {
-        QueueToken token = new QueueToken(userId, LocalDateTime.now());
-        return save(token);
+        QueueToken token = QueueToken.create(userId);
+        return jpaRepository.save(token);
     }
 
     @Override
     public Optional<QueueToken> findByUserId(Long userId) {
-        return Optional.ofNullable(store.get(userId));
+        return jpaRepository.findByUserId(userId);
     }
 
     @Override
     public void delete(Long userId) {
-        store.remove(userId);
+        jpaRepository.findByUserId(userId).ifPresent(jpaRepository::delete);
     }
 
     @Override
     public int size() {
-        return store.size();
+        return (int) jpaRepository.count();
     }
 
     @Override
     public List<QueueToken> findAll() {
-        return new ArrayList<>(store.values());
+        return jpaRepository.findAll();
     }
 
     @Override
     public QueueToken save(QueueToken token) {
-        store.put(token.getUserId(), token);
-        return token;
+        return jpaRepository.save(token);
     }
 
     @Override
@@ -56,16 +56,11 @@ public class InMemoryTokenRepository implements TokenRepository {
                 return i + 1;
             }
         }
-        // userId가 대기열에 없는 경우
         throw new IllegalArgumentException("대기열에 해당 사용자가 존재하지 않습니다.");
     }
 
     @Override
     public List<QueueToken> findAllWaiting() {
-        return store.values().stream()
-                .filter(token -> token.getStatus() == TokenStatus.WAITING)
-                .sorted((a, b) -> a.getIssuedAt().compareTo(b.getIssuedAt()))
-                .toList();
+        return jpaRepository.findAllByStatusOrderByIssuedAtAsc(TokenStatus.WAITING);
     }
-
 }
