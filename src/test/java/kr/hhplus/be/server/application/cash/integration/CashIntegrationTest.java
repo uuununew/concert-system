@@ -171,4 +171,20 @@ public class CashIntegrationTest extends TestContainerConfig {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.NOT_FOUND);
     }
+
+    @Test
+    @DisplayName("저장이 정상적으로 동작한다")
+    void saveCashHistory_directly_savesCorrectly() {
+        // given
+        Long userId = 789L;
+        CashHistory history = CashHistory.charge(userId, BigDecimal.valueOf(3000));
+
+        // when
+        CashHistory saved = cashHistoryRepository.save(history);
+
+        // then
+        assertThat(saved).isNotNull();
+        assertThat(saved.getUserId()).isEqualTo(userId);
+        assertThat(saved.getAmount()).isEqualByComparingTo("3000");
+    }
 }
