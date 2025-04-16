@@ -24,7 +24,7 @@ public class Reservation {
     private Long userId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "concert_seat_id", nullable = false)
+    @JoinColumn(name = "concert_seat_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private ConcertSeat concertSeat;
 
     private BigDecimal price;
