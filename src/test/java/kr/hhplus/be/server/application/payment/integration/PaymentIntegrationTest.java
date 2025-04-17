@@ -85,7 +85,7 @@ public class PaymentIntegrationTest extends TestContainerConfig {
 
         // then
         assertThat(payment).isNotNull();
-        assertThat(payment.getUserId()).isEqualTo(1L);
+        assertThat(payment.getReservation().getUserId()).isEqualTo(1L);
         assertThat(payment.getAmount()).isEqualTo(BigDecimal.valueOf(5000));
     }
 
@@ -104,7 +104,7 @@ public class PaymentIntegrationTest extends TestContainerConfig {
 
         // then
         assertThat(payments).hasSize(2);
-        assertThat(payments).allMatch(p -> p.getUserId().equals(1L));
+        assertThat(payments).allMatch(p -> p.getReservation().getUserId().equals(1L));
     }
 
     @Test

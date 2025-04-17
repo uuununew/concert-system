@@ -67,7 +67,7 @@ public class PaymentCommandServiceTest {
         Payment payment = paymentCommandService.pay(command);
 
         // then : 결제 정보가 저장되고, 예약 상태가 변경되며, 캐시 차감이 발생해야 함
-        assertThat(payment.getUserId()).isEqualTo(userId);
+        assertThat(payment.getReservation().getUserId()).isEqualTo(userId);
         assertThat(payment.getAmount()).isEqualByComparingTo(amount);
 
         verify(cashCommandService).use(argThat(cmd ->
@@ -122,18 +122,15 @@ public class PaymentCommandServiceTest {
     void cancel_payment_success() {
         // given : 정상적으로 결제된 상태의 결제 정보
         Long userId = 1L;
-        Long reservationId = 10L;
         BigDecimal amount = BigDecimal.valueOf(10000);
         Long paymentId = 1L;
 
-        Payment payment = Payment.withAll(
-                paymentId,
-                userId,
-                reservationId,
-                PaymentStatus.PAID,
-                amount,
-                LocalDateTime.now()
-        );
+        User user = new User(userId);
+        Concert concert = Concert.withStatus(kr.hhplus.be.server.domain.concert.ConcertStatus.READY);
+        ConcertSeat seat = ConcertSeat.withAll(10L, concert, "A1", "1층", "A", "VIP", amount, SeatStatus.RESERVED, LocalDateTime.now());
+        Reservation reservation = Reservation.create(user, seat, amount).pay();
+
+        Payment payment = Payment.withAll(paymentId, reservation, PaymentStatus.PAID, amount, LocalDateTime.now());
 
         when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
         when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -152,22 +149,19 @@ public class PaymentCommandServiceTest {
     void cancel_payment_fail_when_already_canceled() {
         // given : 이미 취소된 상태
         Long userId = 1L;
-        Long reservationId = 10L;
         BigDecimal amount = BigDecimal.valueOf(10000);
         Long paymentId = 1L;
 
-        Payment canceledPayment = Payment.withAll(
-                paymentId,
-                userId,
-                reservationId,
-                PaymentStatus.CANCELED,
-                amount,
-                null
-        );
+        User user = new User(userId);
+        Concert concert = Concert.withStatus(kr.hhplus.be.server.domain.concert.ConcertStatus.READY);
+        ConcertSeat seat = ConcertSeat.withAll(11L, concert, "A1", "1층", "A", "VIP", amount, SeatStatus.RESERVED, LocalDateTime.now());
+        Reservation reservation = Reservation.create(user, seat, amount).pay();
+
+        Payment canceledPayment = Payment.withAll(paymentId, reservation, PaymentStatus.CANCELED, amount, null);
 
         when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(canceledPayment));
 
-        // when / then
+        // when // then
         assertThatThrownBy(() -> paymentCommandService.cancel(paymentId))
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining("결제된 건만 취소할 수 있습니다.");
