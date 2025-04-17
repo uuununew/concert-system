@@ -20,7 +20,7 @@ public class ConcertSeat {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "concert_id")
+    @JoinColumn(name = "concert_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Concert concert;
 
     private String seatNumber;
