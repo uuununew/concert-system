@@ -15,8 +15,8 @@ public record PaymentResponse(
     public static PaymentResponse from(Payment payment) {
         return new PaymentResponse(
                 payment.getId(),
-                payment.getUserId(),
-                payment.getReservationId(),
+                payment.getReservation().getUserId(),
+                payment.getReservation().getId(),
                 payment.getAmount(),
                 payment.getPaidAt()
         );

@@ -1,6 +1,7 @@
 package kr.hhplus.be.server.domain.payment;
 
 import jakarta.persistence.*;
+import kr.hhplus.be.server.domain.reservation.Reservation;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
 import lombok.AccessLevel;
@@ -18,8 +19,9 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId;
-    private Long reservationId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "reservation_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    private Reservation reservation;
 
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;
@@ -28,10 +30,9 @@ public class Payment {
     private LocalDateTime paidAt;
 
     // 정적 팩토리 메서드 생성
-    public static Payment create(Long userId, Long reservationId, BigDecimal amount) {
+    public static Payment create(Reservation reservation, BigDecimal amount) {
         Payment payment = new Payment();
-        payment.userId = userId;
-        payment.reservationId = reservationId;
+        payment.reservation = reservation;
         payment.amount = amount;
         payment.status = PaymentStatus.READY;
         return payment;
@@ -40,16 +41,14 @@ public class Payment {
     // 테스트용 팩토리 메서드 추가
     public static Payment withAll(
             Long id,
-            Long userId,
-            Long reservationId,
+            Reservation reservation,
             PaymentStatus status,
             BigDecimal amount,
             LocalDateTime paidAt
     ) {
         Payment payment = new Payment();
         payment.id = id;
-        payment.userId = userId;
-        payment.reservationId = reservationId;
+        payment.reservation = reservation;
         payment.status = status;
         payment.amount = amount;
         payment.paidAt = paidAt;

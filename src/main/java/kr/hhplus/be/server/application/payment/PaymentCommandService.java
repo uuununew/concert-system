@@ -42,7 +42,7 @@ public class PaymentCommandService {
         reservationRepository.save(reservation);
 
         // 결제 객체 생성 및 결제 처리
-        Payment payment = Payment.create(command.userId(), reservation.getId(), command.amount());
+        Payment payment = Payment.create(reservation, command.amount());
         payment.pay(); // 상태를 READY → PAID 로 변경
         return paymentRepository.save(payment);
     }
