@@ -27,6 +27,10 @@
 [SwaggerHub API 문서](https://app.swaggerhub.com/apis-docs/yujinlim-bf9/concert_system_api/v1.0.0#/)
 
 
+### 인덱스 적용 보고서
+[인덱스 최적화 보고서](https://sunrise-sunfish-45d.notion.site/DB-1d7cc24e980180fe948ac908e6ea12be?pvs=4)
+
+
 
 
 

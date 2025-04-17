@@ -1,6 +1,8 @@
 package kr.hhplus.be.server.application.token;
 
+import jakarta.transaction.Transactional;
 import kr.hhplus.be.server.application.token.TokenCommandService;
+import kr.hhplus.be.server.config.TestContainerConfig;
 import kr.hhplus.be.server.domain.token.QueueToken;
 import kr.hhplus.be.server.domain.token.TokenManager;
 import kr.hhplus.be.server.domain.token.TokenRepository;
@@ -9,6 +11,12 @@ import kr.hhplus.be.server.support.exception.CustomException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.*;
 import java.util.Optional;
@@ -16,19 +24,28 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-public class TokenCommandServiceTest {
+@ExtendWith(MockitoExtension.class)
+public class TokenCommandServiceTest{
 
+    private TokenCommandService tokenCommandService;
+
+    @Mock
     private TokenRepository tokenRepository;
+
+    @Mock
     private TokenManager tokenManager;
+
+    @Mock
     private Clock clock;
-    private TokenCommandService service;
+
 
     @BeforeEach
     void setUp() {
         tokenRepository = mock(TokenRepository.class);
         tokenManager = mock(TokenManager.class);
         clock = Clock.fixed(Instant.parse("2025-04-11T12:00:00Z"), ZoneOffset.UTC);
-        service = new TokenCommandService(tokenRepository, tokenManager, clock, 5);
+
+        tokenCommandService = new TokenCommandService(tokenRepository, tokenManager, clock, 5);
     }
 
     @Test
@@ -40,7 +57,7 @@ public class TokenCommandServiceTest {
         when(tokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         // when : 토큰 발급 호출
-        QueueToken token = service.issue(userId);
+        QueueToken token = tokenCommandService.issue(userId);
 
         // then : 새로운 토큰이 발급되고, 상태는 WAITING
         assertEquals(userId, token.getUserId());
@@ -55,7 +72,7 @@ public class TokenCommandServiceTest {
         when(tokenRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
         // when //then : 활성화 시도 시 CustomException 발생
-        assertThrows(CustomException.class, () -> service.activate(userId));
+        assertThrows(CustomException.class, () -> tokenCommandService.activate(userId));
     }
 
     @Test
@@ -67,7 +84,7 @@ public class TokenCommandServiceTest {
         when(tokenRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
 
         // when : 토큰 발급 호출
-        QueueToken result = service.issue(userId);
+        QueueToken result = tokenCommandService.issue(userId);
 
         // then : 기존 토큰을 그대로 반환
         assertSame(existing, result);
@@ -82,7 +99,7 @@ public class TokenCommandServiceTest {
         when(tokenRepository.findByUserId(userId)).thenReturn(Optional.of(token));
 
         // when : 토큰 활성화 시도
-        service.activate(userId);
+        tokenCommandService.activate(userId);
 
         // then : 토큰 상태가 ACTIVE로 변경
         assertEquals(TokenStatus.ACTIVE, token.getStatus());
@@ -97,7 +114,7 @@ public class TokenCommandServiceTest {
         when(tokenRepository.findByUserId(userId)).thenReturn(Optional.of(token));
 
         // when // then : 활성화 시도 시 CustomException 발생 및 상태 EXPIRED
-        assertThrows(CustomException.class, () -> service.activate(userId));
+        assertThrows(CustomException.class, () -> tokenCommandService.activate(userId));
         assertEquals(TokenStatus.EXPIRED, token.getStatus());
     }
 
@@ -110,7 +127,7 @@ public class TokenCommandServiceTest {
         when(tokenRepository.findByUserId(userId)).thenReturn(Optional.of(token));
 
         // when : complete 호출
-        service.complete(userId);
+        tokenCommandService.complete(userId);
 
         // then : 토큰 상태가 EXPIRED로 변경
         assertEquals(TokenStatus.EXPIRED, token.getStatus());
@@ -126,7 +143,7 @@ public class TokenCommandServiceTest {
         when(tokenRepository.findByUserId(userId)).thenReturn(Optional.of(token));
 
         // when : restore 호출
-        service.restore(userId);
+        tokenCommandService.restore(userId);
 
         // then : 토큰 상태가 ACTIVE로 복구됨
         assertEquals(TokenStatus.ACTIVE, token.getStatus());
@@ -141,7 +158,7 @@ public class TokenCommandServiceTest {
         when(tokenRepository.findByUserId(userId)).thenReturn(Optional.of(token));
 
         // when : 토큰 상태 조회
-        Optional<QueueToken> result = service.status(userId);
+        Optional<QueueToken> result = tokenCommandService.status(userId);
 
         // then : 결과가 존재
         assertTrue(result.isPresent());
@@ -151,7 +168,7 @@ public class TokenCommandServiceTest {
     @DisplayName("expireOverdueTokens는 토큰 만료 위임")
     void expire_delegates_to_manager() {
         // when : 스케줄러용 만료 처리 호출
-        service.expireOverdueTokens();
+        tokenCommandService.expireOverdueTokens();
 
         // then : TokenManager로 위임되었는지 검증
         verify(tokenManager).expireOverdueTokens(eq(5), any());
