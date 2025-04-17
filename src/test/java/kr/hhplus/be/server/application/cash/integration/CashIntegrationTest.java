@@ -177,14 +177,15 @@ public class CashIntegrationTest extends TestContainerConfig {
     void saveCashHistory_directly_savesCorrectly() {
         // given
         Long userId = 789L;
-        CashHistory history = CashHistory.charge(userId, BigDecimal.valueOf(3000));
+        UserCash userCash = userCashRepository.save(new UserCash(userId, BigDecimal.ZERO));
+        CashHistory history = CashHistory.charge(userCash, BigDecimal.valueOf(3000));
 
         // when
         CashHistory saved = cashHistoryRepository.save(history);
 
         // then
         assertThat(saved).isNotNull();
-        assertThat(saved.getUserId()).isEqualTo(userId);
+        assertThat(saved.getUserCash().getUserId()).isEqualTo(userId);
         assertThat(saved.getAmount()).isEqualByComparingTo("3000");
     }
 }
