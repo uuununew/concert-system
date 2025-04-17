@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.application.cash;
 
+import kr.hhplus.be.server.domain.cash.CashHistory;
 import kr.hhplus.be.server.domain.cash.CashHistoryRepository;
 import kr.hhplus.be.server.domain.cash.UserCash;
 import kr.hhplus.be.server.domain.cash.UserCashRepository;
@@ -35,6 +36,7 @@ public class CashServiceTest {
 
         //이후 로직(userCash.use or save)은 실행되면 안됨
         verify(mockUserCashRepository, never()).save(any());
+        verify(mockCashHistoryRepository, never()).save(any());
     }
 
     @Test
@@ -167,5 +169,16 @@ public class CashServiceTest {
 
         verify(mockUserCashRepository, never()).save(any());
         verify(mockCashHistoryRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("CashHistory가 정상적으로 생성된다.")
+    void create_cash_history_directly() {
+        Long userId = 123L;
+        UserCash userCash = new UserCash(userId, BigDecimal.ZERO);
+        CashHistory history = CashHistory.charge(userCash, BigDecimal.valueOf(3000));
+
+        assertEquals(userId, history.getUserCash().getUserId());
+        assertEquals(BigDecimal.valueOf(3000), history.getAmount());
     }
 }

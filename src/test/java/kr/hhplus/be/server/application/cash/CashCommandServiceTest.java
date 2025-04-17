@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.application.cash;
 
+import kr.hhplus.be.server.domain.cash.CashHistoryRepository;
 import kr.hhplus.be.server.domain.cash.UserCash;
 import kr.hhplus.be.server.domain.cash.UserCashRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,11 +25,13 @@ public class CashCommandServiceTest {
 
     private UserCashRepository userCashRepository;
     private CashCommandService service;
+    private CashHistoryRepository cashHistoryRepository;
 
     @BeforeEach
     void setUp() {
         userCashRepository = mock(UserCashRepository.class);
-        service = new CashCommandService(userCashRepository);
+        cashHistoryRepository = mock(CashHistoryRepository.class);
+        service = new CashCommandService(userCashRepository, cashHistoryRepository);
     }
 
     @Test

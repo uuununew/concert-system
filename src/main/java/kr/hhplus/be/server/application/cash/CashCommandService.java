@@ -1,28 +1,45 @@
 package kr.hhplus.be.server.application.cash;
 
+import kr.hhplus.be.server.domain.cash.CashHistory;
+import kr.hhplus.be.server.domain.cash.CashHistoryRepository;
 import kr.hhplus.be.server.domain.cash.UserCash;
 import kr.hhplus.be.server.domain.cash.UserCashRepository;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
 public class CashCommandService {
 
     private final UserCashRepository userCashRepository;
+    private final CashHistoryRepository cashHistoryRepository;
 
-    /**
-     * 유저의 캐시를 차감합니다.
-     * - 존재하지 않으면 예외 발생
-     * - 캐시 도메인에서 유효성 검증 수행
-     */
+    @Transactional
     public void use(UseCashCommand command) {
-        UserCash cash = userCashRepository.findByUserId(command.getUserId())
+        UserCash userCash = userCashRepository.findByUserId(command.getUserId())
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "캐시 정보가 없습니다."));
 
-        cash.use(command.getAmount());
-        userCashRepository.save(cash);
+        userCash.use(command.getAmount());
+        userCashRepository.save(userCash);
+
+        cashHistoryRepository.save(CashHistory.use(userCash, command.getAmount()));
+    }
+
+    @Transactional
+    public void charge(ChargeCashCommand command) {
+        UserCash userCash = userCashRepository.findByUserId(command.getUserId())
+                .orElseGet(() -> new UserCash(command.getUserId(), command.getAmount()));
+
+        if (userCash.getId() != null) {
+            userCash.charge(command.getAmount());
+        }
+
+        userCashRepository.save(userCash);
+        cashHistoryRepository.save(CashHistory.use(userCash, command.getAmount()));
     }
 }

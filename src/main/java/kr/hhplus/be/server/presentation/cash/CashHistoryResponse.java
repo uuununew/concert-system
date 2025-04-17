@@ -19,7 +19,7 @@ public record CashHistoryResponse(
     public static CashHistoryResponse from(CashHistory history) {
         return new CashHistoryResponse(
                 history.getId(),
-                history.getUserId(),
+                history.getUserCash().getUserId(),
                 history.getAmount(),
                 history.getType(),
                 history.getCreatedAt()

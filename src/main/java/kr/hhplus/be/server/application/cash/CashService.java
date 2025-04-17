@@ -9,6 +9,7 @@ import kr.hhplus.be.server.domain.cash.UserCashRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import kr.hhplus.be.server.domain.cash.CashHistory;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -26,6 +27,7 @@ public class CashService {
      * - 충전 금액은 Command에서 유효성 검사를 거친 상태로 전달됩니다.
      * - 최대 충전 한도를 초과하면 예외가 발생합니다.
      */
+    @Transactional
     public CashResult charge(ChargeCashCommand command) {
         UserCash userCash = userCashRepository.findByUserId(command.getUserId())
                 .orElseGet(() -> new UserCash(command.getUserId(), BigDecimal.ZERO));
@@ -34,7 +36,7 @@ public class CashService {
         userCashRepository.save(userCash);
 
         //충전이력 저장
-        cashHistoryRepository.save(CashHistory.charge(command.getUserId(), command.getAmount()));
+        cashHistoryRepository.save(CashHistory.use(userCash, command.getAmount()));
 
         return new CashResult(userCash.getAmount());
 
@@ -46,6 +48,7 @@ public class CashService {
      * - 사용 금액은 Command에서 유효성 검사를 거친 상태로 전달됩니다.
      * - 잔액보다 많은 금액을 사용하려고 하면 예외가 발생합니다.
      */
+    @Transactional
     public CashResult use(UseCashCommand command) {
         UserCash userCash = userCashRepository.findByUserId(command.getUserId())
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
@@ -54,7 +57,7 @@ public class CashService {
         userCashRepository.save(userCash);
 
         //사용이력 저장
-        cashHistoryRepository.save(CashHistory.use(command.getUserId(), command.getAmount()));
+        cashHistoryRepository.save(CashHistory.use(userCash, command.getAmount()));
 
         return new CashResult(userCash.getAmount());
     }

@@ -37,7 +37,7 @@ public class ConcertSeatQueryServiceTest {
         // given
         Long concertId = 1L;
         when(concertRepository.existsById(concertId)).thenReturn(true);
-        when(concertSeatRepository.findAllByConcertId(concertId)).thenReturn(List.of(mock(ConcertSeat.class)));
+        when(concertSeatRepository.findAllByConcert_Id(concertId)).thenReturn(List.of(mock(ConcertSeat.class)));
 
         // when
         List<ConcertSeat> seats = queryService.getSeats(concertId);
