@@ -36,7 +36,7 @@ public class CashService {
         userCashRepository.save(userCash);
 
         //충전이력 저장
-        cashHistoryRepository.save(CashHistory.charge(command.getUserId(), command.getAmount()));
+        cashHistoryRepository.save(CashHistory.use(userCash, command.getAmount()));
 
         return new CashResult(userCash.getAmount());
 
@@ -57,7 +57,7 @@ public class CashService {
         userCashRepository.save(userCash);
 
         //사용이력 저장
-        cashHistoryRepository.save(CashHistory.use(command.getUserId(), command.getAmount()));
+        cashHistoryRepository.save(CashHistory.use(userCash, command.getAmount()));
 
         return new CashResult(userCash.getAmount());
     }

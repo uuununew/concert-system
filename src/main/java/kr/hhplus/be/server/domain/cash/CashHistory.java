@@ -13,7 +13,10 @@ public class CashHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_cash_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    private UserCash userCash;
+
 
     private BigDecimal amount;
 
@@ -24,18 +27,18 @@ public class CashHistory {
 
     protected CashHistory() {}
 
-    public CashHistory(Long userId, BigDecimal amount, CashHistoryType type) {
-        this.userId = userId;
+    public CashHistory(UserCash userCash, BigDecimal amount, CashHistoryType type) {
+        this.userCash = userCash;
         this.amount = amount;
         this.type = type;
         this.createdAt = LocalDateTime.now();
     }
 
-    public static CashHistory charge(Long userId, BigDecimal amount) {
-        return new CashHistory(userId, amount, CashHistoryType.CHARGE);
+    public static CashHistory charge(UserCash userCash, BigDecimal amount) {
+        return new CashHistory(userCash, amount, CashHistoryType.CHARGE);
     }
 
-    public static CashHistory use(Long userId, BigDecimal amount) {
-        return new CashHistory(userId, amount, CashHistoryType.USE);
+    public static CashHistory use(UserCash userCash, BigDecimal amount) {
+        return new CashHistory(userCash, amount, CashHistoryType.USE);
     }
 }

@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface CashHistoryJpaRepository extends JpaRepository<CashHistory, Long> {
-    List<CashHistory> findByUserId(Long userId);
+    List<CashHistory> findByUserCash_UserId(Long userId);
 }

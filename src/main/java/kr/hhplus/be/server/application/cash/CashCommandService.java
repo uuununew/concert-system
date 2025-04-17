@@ -27,7 +27,7 @@ public class CashCommandService {
         userCash.use(command.getAmount());
         userCashRepository.save(userCash);
 
-        cashHistoryRepository.save(CashHistory.use(command.getUserId(), command.getAmount()));
+        cashHistoryRepository.save(CashHistory.use(userCash, command.getAmount()));
     }
 
     @Transactional
@@ -40,6 +40,6 @@ public class CashCommandService {
         }
 
         userCashRepository.save(userCash);
-        cashHistoryRepository.save(CashHistory.charge(command.getUserId(), command.getAmount()));
+        cashHistoryRepository.save(CashHistory.use(userCash, command.getAmount()));
     }
 }

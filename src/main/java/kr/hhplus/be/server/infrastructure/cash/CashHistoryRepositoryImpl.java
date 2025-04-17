@@ -25,7 +25,5 @@ public class CashHistoryRepositoryImpl implements CashHistoryRepository {
     }
 
     @Override
-    public List<CashHistory> findByUserId(Long userId) {
-        return cashHistoryJpaRepository.findByUserId(userId);
-    }
+    public List<CashHistory> findByUserId(Long userId) {return cashHistoryJpaRepository.findByUserCash_UserId(userId);}
 }
