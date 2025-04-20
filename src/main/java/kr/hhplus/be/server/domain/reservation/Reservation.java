@@ -27,6 +27,9 @@ public class Reservation {
     @JoinColumn(name = "concert_seat_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private ConcertSeat concertSeat;
 
+    @Column(name = "concert_id", nullable = false)
+    private Long concertId;
+
     private BigDecimal price;
 
     @Enumerated(EnumType.STRING)
@@ -41,6 +44,7 @@ public class Reservation {
             Long id,
             Long userId,
             ConcertSeat concertSeat,
+            Long concertId,
             BigDecimal price,
             ReservationStatus status,
             LocalDateTime paidAt,
@@ -50,6 +54,7 @@ public class Reservation {
         this.id = id;
         this.userId = userId;
         this.concertSeat = concertSeat;
+        this.concertId = concertId;
         this.price = price;
         this.status = status;
         this.paidAt = paidAt;
@@ -63,6 +68,7 @@ public class Reservation {
                 null,
                 user.getId(),
                 seat,
+                seat.getConcert().getId(),
                 price,
                 ReservationStatus.RESERVED,
                 null,
@@ -80,6 +86,7 @@ public class Reservation {
                 this.id,
                 this.userId,
                 this.concertSeat,
+                this.concertId,
                 this.price,
                 ReservationStatus.PAID,
                 LocalDateTime.now(),
@@ -97,6 +104,7 @@ public class Reservation {
                 this.id,
                 this.userId,
                 this.concertSeat,
+                this.concertId,
                 this.price,
                 ReservationStatus.CANCELED,
                 this.paidAt,

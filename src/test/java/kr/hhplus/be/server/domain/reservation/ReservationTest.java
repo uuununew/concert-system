@@ -117,7 +117,7 @@ public class ReservationTest {
     void markPaid_fail_when_not_reserved() {
         ConcertSeat seat = mock(ConcertSeat.class); // seat은 실제 구현 필요 없음
         Reservation reservation = new Reservation(
-                1L, 1L,seat,
+                1L, 1L,seat,999L,
                 BigDecimal.valueOf(10000), ReservationStatus.CANCELED, LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
 
         assertThatThrownBy(reservation::pay)
