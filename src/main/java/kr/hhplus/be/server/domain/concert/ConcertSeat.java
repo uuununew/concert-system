@@ -19,11 +19,16 @@ public class ConcertSeat {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long concertId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "concert_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    private Concert concert;
 
     private String seatNumber;
     private String section;
+
+    @Column(name = "seat_row")
     private String row;
+
     private String grade;
 
     private BigDecimal price;
@@ -35,7 +40,7 @@ public class ConcertSeat {
 
     public ConcertSeat(
             Long id,
-            Long concertId,
+            Concert concert,
             String seatNumber,
             String section,
             String row,
@@ -45,7 +50,7 @@ public class ConcertSeat {
             LocalDateTime updatedAt
     ) {
         this.id = id;
-        this.concertId = concertId;
+        this.concert = concert;
         this.seatNumber = seatNumber;
         this.section = section;
         this.row = row;
@@ -59,18 +64,17 @@ public class ConcertSeat {
      * 비즈니스 로직용 생성 메서드
      * 초기 상태는 항상 AVAILABLE, 업데이트 시간은 현재 시간으로 설정
      */
-    public static ConcertSeat of(Long concertId, String seatNumber, String section, String row, String grade, BigDecimal price) {
-        return new ConcertSeat(
-                null,
-                concertId,
-                seatNumber,
-                section,
-                row,
-                grade,
-                price,
-                SeatStatus.AVAILABLE,
-                LocalDateTime.now()
-        );
+    public static ConcertSeat of(Concert concert, String seatNumber, String section, String row, String grade, BigDecimal price) {
+        ConcertSeat seat = new ConcertSeat();
+        seat.concert = concert;
+        seat.seatNumber = seatNumber;
+        seat.section = section;
+        seat.row = row;
+        seat.grade = grade;
+        seat.price = price;
+        seat.status = SeatStatus.AVAILABLE;
+        seat.updatedAt = LocalDateTime.now();
+        return seat;
     }
 
 
@@ -90,11 +94,11 @@ public class ConcertSeat {
     /**
      * 테스트용 팩토리 메서드
      */
-    public static ConcertSeat withAll(Long id, Long concertId, String seatNumber, String section, String row,
+    public static ConcertSeat withAll(Long id, Concert concert, String seatNumber, String section, String row,
                                       String grade, BigDecimal price, SeatStatus status, LocalDateTime updatedAt) {
         ConcertSeat seat = new ConcertSeat();
         seat.id = id;
-        seat.concertId = concertId;
+        seat.concert = concert;
         seat.seatNumber = seatNumber;
         seat.section = section;
         seat.row = row;

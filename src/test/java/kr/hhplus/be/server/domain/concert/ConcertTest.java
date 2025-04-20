@@ -37,6 +37,19 @@ public class ConcertTest {
     }
 
     @Test
+    @DisplayName("콘서트는 READY 상태일 때만 OPENED 상태로 전환할 수 있다")
+    void can_open_if_ready() {
+        // given
+        Concert concert = Concert.withStatus(ConcertStatus.READY);
+
+        // when
+        concert.open();
+
+        // then
+        assertThat(concert.getStatus()).isEqualTo(ConcertStatus.OPENED);
+    }
+
+    @Test
     @DisplayName("정적 팩토리 메서드 create로 콘서트를 생성할 수 있다")
     void createConcert_success() {
         // when

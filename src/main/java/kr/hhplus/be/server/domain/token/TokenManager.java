@@ -21,7 +21,7 @@ public class TokenManager {
 
     public void expireOverdueTokens(int expireMinutes, LocalDateTime now) {
         for (QueueToken token : repository.findAll()) {
-            if (token.isExpired(now, expireMinutes)) {
+            if (token.getStatus() == TokenStatus.WAITING && token.isExpired(now, expireMinutes)) {
                 token.expire();
             }
         }

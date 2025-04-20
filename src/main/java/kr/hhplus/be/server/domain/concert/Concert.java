@@ -67,6 +67,18 @@ public class Concert {
         return concert;
     }
 
+    public static Concert withAll(Long id, String title, int round, ConcertStatus status, LocalDateTime concertDateTime) {
+        Concert concert = new Concert();
+        concert.id = id;
+        concert.title = title;
+        concert.round = round;
+        concert.status = status;
+        concert.concertDateTime = concertDateTime;
+        concert.createdAt = LocalDateTime.now();
+        concert.updatedAt = LocalDateTime.now();
+        return concert;
+    }
+
     /**
      * 콘서트를 예약 가능 상태로 연다
      */
