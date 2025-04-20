@@ -93,9 +93,30 @@ public class PaymentIntegrationTest extends TestContainerConfig {
     @DisplayName("유저 ID로 결제 내역을 조회할 수 있다")
     void get_payment_history_by_userId() {
         // given
-        Reservation reservation1 = createReservation();
-        Reservation reservation2 = createReservation();
+        Concert concert = concertRepository.save(
+                Concert.create("Payment Test Concert", 1, ConcertStatus.READY, LocalDateTime.now().plusDays(1)));
 
+        ConcertSeat seat1 = concertSeatRepository.save(
+                ConcertSeat.of(concert, "B1", "1층", "B", "R", BigDecimal.valueOf(10000)));
+
+        ConcertSeat seat2 = concertSeatRepository.save(
+                ConcertSeat.of(concert, "B2", "1층", "B", "R", BigDecimal.valueOf(10000)));
+
+        // 유저 1, 유저 2 각각 대기열 발급 및 캐시 충전
+        tokenRepository.save(new QueueToken(1L, LocalDateTime.now()));
+        tokenRepository.save(new QueueToken(2L, LocalDateTime.now()));
+        cashService.charge(new ChargeCashCommand(1L, BigDecimal.valueOf(100000)));
+        cashService.charge(new ChargeCashCommand(2L, BigDecimal.valueOf(100000)));
+
+        // 유저 1, 2 각각 예약
+        Reservation reservation1 = reservationCommandService.reserve(
+                new CreateReservationCommand(1L, seat1.getId(), BigDecimal.valueOf(10000))
+        );
+        Reservation reservation2 = reservationCommandService.reserve(
+                new CreateReservationCommand(1L, seat2.getId(), BigDecimal.valueOf(10000))
+        );
+
+        // 유저 1이 두 건 결제
         paymentService.pay(new CreatePaymentCommand(1L, reservation1.getId(), BigDecimal.valueOf(3000)));
         paymentService.pay(new CreatePaymentCommand(1L, reservation2.getId(), BigDecimal.valueOf(7000)));
 
