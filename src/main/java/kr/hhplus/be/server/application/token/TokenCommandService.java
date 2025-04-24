@@ -46,23 +46,23 @@ public class TokenCommandService {
 
     public void activate(Long userId) {
         QueueToken token = tokenRepository.findByUserId(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "토큰 정보가 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다."));
         if (token.isExpired(LocalDateTime.now(clock), expireMinutes)) {
             token.expire();
-            throw new CustomException(ErrorCode.NOT_FOUND, "토큰 정보가 없습니다.");
+            throw new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다.");
         }
         token.activate();
     }
 
     public void complete(Long userId) {
         QueueToken token = tokenRepository.findByUserId(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "토큰 정보가 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다."));
         token.expire();
     }
 
     public void restore(Long userId) {
         QueueToken token = tokenRepository.findByUserId(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "토큰 정보가 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다."));
         token.restore();
     }
 

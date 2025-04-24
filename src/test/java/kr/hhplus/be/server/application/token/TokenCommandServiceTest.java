@@ -8,6 +8,7 @@ import kr.hhplus.be.server.domain.token.TokenManager;
 import kr.hhplus.be.server.domain.token.TokenRepository;
 import kr.hhplus.be.server.domain.token.TokenStatus;
 import kr.hhplus.be.server.support.exception.CustomException;
+import kr.hhplus.be.server.support.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -72,7 +73,8 @@ public class TokenCommandServiceTest{
         when(tokenRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
         // when //then : 활성화 시도 시 CustomException 발생
-        assertThrows(CustomException.class, () -> tokenCommandService.activate(userId));
+        CustomException ex = assertThrows(CustomException.class, () -> tokenCommandService.activate(userId));
+        assertEquals(ErrorCode.TOKEN_NOT_FOUND, ex.getErrorCode());
     }
 
     @Test
@@ -114,7 +116,8 @@ public class TokenCommandServiceTest{
         when(tokenRepository.findByUserId(userId)).thenReturn(Optional.of(token));
 
         // when // then : 활성화 시도 시 CustomException 발생 및 상태 EXPIRED
-        assertThrows(CustomException.class, () -> tokenCommandService.activate(userId));
+        CustomException ex = assertThrows(CustomException.class, () -> tokenCommandService.activate(userId));
+        assertEquals(ErrorCode.TOKEN_NOT_FOUND, ex.getErrorCode());
         assertEquals(TokenStatus.EXPIRED, token.getStatus());
     }
 
