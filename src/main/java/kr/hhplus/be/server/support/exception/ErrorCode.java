@@ -24,6 +24,7 @@ public enum ErrorCode {
 
     // 409
     ALREADY_RESERVED(HttpStatus.CONFLICT, "E409", "이미 예약된 좌석입니다"),
+    INVALID_TOKEN_ORDER(HttpStatus.CONFLICT,"E409-TOKEN", "아직 차례가 아닙니다."),
 
     CONCURRENT_REQUEST(HttpStatus.CONFLICT, "E410", "요청이 동시에 처리되어 실패했습니다. 다시 시도해 주세요"),
 
