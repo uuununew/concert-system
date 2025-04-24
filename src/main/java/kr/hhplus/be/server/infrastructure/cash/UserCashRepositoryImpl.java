@@ -20,8 +20,12 @@ public class UserCashRepositoryImpl implements UserCashRepository {
     }
 
     @Override
-    @Transactional
     public UserCash save(UserCash userCash) {
         return userCashJpaRepository.save(userCash);
+    }
+
+    @Override
+    public Optional<UserCash> findByUserIdWithOptimistic(Long userId) {
+        return userCashJpaRepository.findByUserIdWithOptimistic(userId);
     }
 }

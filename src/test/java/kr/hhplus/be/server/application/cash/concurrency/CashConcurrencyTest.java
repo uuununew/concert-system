@@ -1,51 +1,167 @@
 package kr.hhplus.be.server.application.cash.concurrency;
 
+import jakarta.persistence.OptimisticLockException;
+import kr.hhplus.be.server.application.cash.CashCommandService;
 import kr.hhplus.be.server.application.cash.CashService;
 import kr.hhplus.be.server.application.cash.ChargeCashCommand;
 import kr.hhplus.be.server.application.cash.UseCashCommand;
 import kr.hhplus.be.server.config.TestContainerConfig;
+import kr.hhplus.be.server.domain.cash.UserCash;
+import kr.hhplus.be.server.domain.cash.UserCashRepository;
+import kr.hhplus.be.server.infrastructure.cash.UserCashJpaRepository;
 import kr.hhplus.be.server.support.concurrency.ConcurrencyTestExecutor;
+import kr.hhplus.be.server.support.exception.CustomException;
+import kr.hhplus.be.server.support.exception.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import java.util.Random;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Slf4j
 @SpringBootTest
 @Testcontainers
 public class CashConcurrencyTest extends TestContainerConfig {
 
     @Autowired
-    private CashService cashService;
+    private CashCommandService cashCommandService;
 
-    @DisplayName("동시에 캐시를 사용할 경우 하나만 성공해야 한다.")
+    @Autowired
+    private ApplicationContext applicationContext;
+
+    @Autowired
+    private UserCashRepository userCashRepository;
+
+    @Autowired
+    private UserCashJpaRepository userCashJpaRepository;
+
+    private long startTime;
+
+    @BeforeEach
+    void startTimer() {
+        startTime = System.currentTimeMillis();
+    }
+
+    @AfterEach
+    void endTimer() {
+        long endTime = System.currentTimeMillis();
+        long elapsed = endTime - startTime;
+        log.info("⏱️ 테스트 실행 시간: {}ms", elapsed);
+    }
+
+    @DisplayName("동일 사용자가 동시에 포인트 5번 사용하면 1번은 성공하고 4번은 예외 발생")
     @Test
     void useCash_concurrent_fail_on_insufficient_balance() throws InterruptedException{
-        //given
+        // given
         Long userId = 1L;
-        cashService.charge(new ChargeCashCommand(userId, BigDecimal.valueOf(1000)));
+        BigDecimal useAmount = BigDecimal.valueOf(800);
 
-        int threadCount = 5; //5개의 스레드가 동시에 캐시 사용
-        List<Throwable> exceptions = Collections.synchronizedList(new ArrayList<>());
+        userCashJpaRepository.findByUserId(userId)
+                .ifPresent(userCashJpaRepository::delete);
+        userCashJpaRepository.save(new UserCash(userId, BigDecimal.valueOf(1000)));
 
-        //when
-        ConcurrencyTestExecutor.run(threadCount, () ->{
-            try{
-                cashService.use(new UseCashCommand(userId, BigDecimal.valueOf(600)));
-            }catch (Throwable t){
-                exceptions.add(t); //실패 케이스 저장
-            }
-        });
+        int threadCount = 5;
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+        AtomicInteger successCount = new AtomicInteger();
+        AtomicInteger conflictCount = new AtomicInteger();
 
-        //then : 성공 요청 수는 1이 되어야 한다
-        long successCount = threadCount - exceptions.size();
-        assertThat(successCount).isEqualTo(1);
+        // when
+        for (int i = 0; i < threadCount; i++) {
+            executorService.submit(() -> {
+                try {
+                    cashCommandService.use(new UseCashCommand(userId, useAmount));
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    if (e instanceof ObjectOptimisticLockingFailureException || e instanceof OptimisticLockException || e instanceof CustomException) {
+                        conflictCount.incrementAndGet(); // 낙관적 락 충돌
+                    } else {
+                        throw new RuntimeException("Unexpected exception", e);
+                    }
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await(5, TimeUnit.SECONDS);
+
+        // then
+        log.info("✅ [{} Threads] 성공: {} / 예외: {}", threadCount, successCount.get(), conflictCount.get());
+
+        assertThat(successCount.get()).isEqualTo(1);
+        assertThat(conflictCount.get()).isEqualTo(threadCount - 1);
+
+        UserCash userCash = userCashJpaRepository.findByUserId(userId).orElseThrow();
+        assertThat(userCash.getAmount()).isEqualByComparingTo(BigDecimal.valueOf(200));
+    }
+
+    @DisplayName("동일 사용자가 동시에 포인트 3번 충전하면 1번은 성공하고 2번은 예외 발생")
+    @Test
+    void charge_concurrent_only_one_succeed() throws InterruptedException {
+        // given
+        Long userId = 100L;
+        BigDecimal amount = BigDecimal.valueOf(1000);
+
+        userCashJpaRepository.findByUserId(userId)
+                .ifPresent(userCashJpaRepository::delete);
+
+        userCashJpaRepository.save(new UserCash(userId, BigDecimal.ZERO));
+
+        int threadCount = 3;
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+        AtomicInteger successCount = new AtomicInteger();
+        AtomicInteger conflictCount = new AtomicInteger();
+
+        // when
+        for (int i = 0; i < threadCount; i++) {
+            executorService.submit(() -> {
+                try {
+                    cashCommandService.charge(new ChargeCashCommand(userId, amount));
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    if (e instanceof ObjectOptimisticLockingFailureException || e instanceof OptimisticLockException) {
+                        conflictCount.incrementAndGet(); // 낙관적 락 충돌
+                    } else {
+                        // 그 외 예외는 테스트 실패로 간주
+                        throw new RuntimeException("Unexpected exception", e);
+                    }
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await(5, TimeUnit.SECONDS);
+
+        // then
+        log.info("✅ [{} Threads] 성공: {} / 예외: {}", threadCount, successCount.get(), conflictCount.get());
+
+        assertThat(successCount.get()).isEqualTo(1);
+        assertThat(conflictCount.get()).isEqualTo(threadCount - 1);
+
+        UserCash userCash = userCashJpaRepository.findByUserId(userId).orElseThrow();
+        assertThat(userCash.getAmount()).isEqualByComparingTo(amount);
+
+        executorService.shutdown();
     }
 }
