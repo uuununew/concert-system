@@ -45,9 +45,9 @@ public class TokenController {
      * - 유효시간이 초과되었을 경우 예외 발생
      */
     @PostMapping("/activate/{userId}")
-    public ResponseEntity<Void> activate(@PathVariable Long userId) {
+    public ResponseEntity<String> activate(@PathVariable Long userId) {
         tokenCommandService.activate(userId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok("Token activated successfully");
     }
 
     /**
