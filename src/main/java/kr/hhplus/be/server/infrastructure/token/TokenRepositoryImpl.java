@@ -6,6 +6,7 @@ import kr.hhplus.be.server.domain.token.TokenStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -17,8 +18,8 @@ public class TokenRepositoryImpl implements TokenRepository {
     private final QueueTokenJpaRepository jpaRepository;
 
     @Override
-    public QueueToken enqueue(Long userId) {
-        QueueToken token = QueueToken.create(userId);
+    public QueueToken enqueue(Long userId, Clock clock) {
+        QueueToken token = QueueToken.create(userId, clock);
         return jpaRepository.save(token);
     }
 
@@ -48,19 +49,30 @@ public class TokenRepositoryImpl implements TokenRepository {
     }
 
     @Override
-    public int getWaitingPosition(Long userId) {
+    public Optional<Integer> getWaitingPosition(Long userId) {
         List<QueueToken> waitingList = findAllWaiting();
 
         for (int i = 0; i < waitingList.size(); i++) {
             if (waitingList.get(i).getUserId().equals(userId)) {
-                return i + 1;
+                return Optional.of(i + 1);
             }
         }
-        throw new IllegalArgumentException("대기열에 해당 사용자가 존재하지 않습니다.");
+
+        return Optional.empty();
     }
 
     @Override
     public List<QueueToken> findAllWaiting() {
         return jpaRepository.findAllByStatusOrderByIssuedAtAsc(TokenStatus.WAITING);
+    }
+
+    @Override
+    public List<QueueToken> findAllByStatusAndIssuedAtBefore(TokenStatus status, LocalDateTime before) {
+        return jpaRepository.findAllByStatusAndIssuedAtBefore(status, before);
+    }
+
+    @Override
+    public List<QueueToken> findAllByStatusOrderByIssuedAt(TokenStatus status) {
+        return jpaRepository.findAllByStatusOrderByIssuedAt(status);
     }
 }
