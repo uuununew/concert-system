@@ -32,7 +32,7 @@
 
 
 ### 동시성 제어 보고서
-[동시성 제어 보고서](https://www.notion.so/1decc24e9801802389cac505382fa35f?pvs=4)
+[동시성 제어 보고서](https://sunrise-sunfish-45d.notion.site/1decc24e9801802389cac505382fa35f?pvs=4)
 
 
 
