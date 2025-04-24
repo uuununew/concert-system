@@ -107,9 +107,10 @@ public class PaymentCommandServiceTest {
         Concert concert = Concert.withStatus(kr.hhplus.be.server.domain.concert.ConcertStatus.READY);
         ConcertSeat seat = ConcertSeat.withAll(
                 1L, concert, "A1", "1층", "A", "VIP", amount, SeatStatus.AVAILABLE, LocalDateTime.now());
-        Reservation paid = Reservation.create(user, seat, amount).pay();
+        Reservation reservation = Reservation.create(user, seat, amount);
+        reservation.pay();
 
-        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(paid));
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
         // when//then : 결제 불가 예외 발생
         assertThatThrownBy(() -> paymentCommandService.pay(command))
@@ -128,7 +129,8 @@ public class PaymentCommandServiceTest {
         User user = new User(userId);
         Concert concert = Concert.withStatus(kr.hhplus.be.server.domain.concert.ConcertStatus.READY);
         ConcertSeat seat = ConcertSeat.withAll(10L, concert, "A1", "1층", "A", "VIP", amount, SeatStatus.RESERVED, LocalDateTime.now());
-        Reservation reservation = Reservation.create(user, seat, amount).pay();
+        Reservation reservation = Reservation.create(user, seat, amount);
+        reservation.pay();
 
         Payment payment = Payment.withAll(paymentId, reservation, PaymentStatus.PAID, amount, LocalDateTime.now());
 
@@ -155,7 +157,8 @@ public class PaymentCommandServiceTest {
         User user = new User(userId);
         Concert concert = Concert.withStatus(kr.hhplus.be.server.domain.concert.ConcertStatus.READY);
         ConcertSeat seat = ConcertSeat.withAll(11L, concert, "A1", "1층", "A", "VIP", amount, SeatStatus.RESERVED, LocalDateTime.now());
-        Reservation reservation = Reservation.create(user, seat, amount).pay();
+        Reservation reservation = Reservation.create(user, seat, amount);
+        reservation.pay();
 
         Payment canceledPayment = Payment.withAll(paymentId, reservation, PaymentStatus.CANCELED, amount, null);
 
