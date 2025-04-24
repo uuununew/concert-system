@@ -19,7 +19,18 @@ public enum ErrorCode {
     FORBIDDEN(HttpStatus.FORBIDDEN, "E403", "접근 권한이 없습니다"),
 
     // 404
-    NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "요청한 리소스를 찾을 수 없습니다");
+    NOT_FOUND(HttpStatus.NOT_FOUND, "E404", "요청한 리소스를 찾을 수 없습니다"),
+    TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "E404-TOKEN", "사용자의 토큰이 존재하지 않습니다."),
+
+    // 409
+    ALREADY_RESERVED(HttpStatus.CONFLICT, "E409", "이미 예약된 좌석입니다"),
+
+    CONCURRENT_REQUEST(HttpStatus.CONFLICT, "E410", "요청이 동시에 처리되어 실패했습니다. 다시 시도해 주세요"),
+
+    OPTIMISTIC_LOCK_CONFLICT(HttpStatus.CONFLICT, "E411", "낙관적 락 충돌이 발생했습니다. 다시 시도해주세요"),
+
+    // 406
+    ALREADY_PAID(HttpStatus.BAD_REQUEST, "E406", "이미 결제된 예약입니다");
 
     private final HttpStatus status;
     private final String code;
