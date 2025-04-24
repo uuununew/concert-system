@@ -35,7 +35,8 @@ public class TokenQueryServiceTest {
         Long userId = 1L;
         int expectedPosition = 3;
 
-        when(tokenRepository.getWaitingPosition(userId)).thenReturn(expectedPosition);
+        when(tokenRepository.getWaitingPosition(userId))
+                .thenReturn(Optional.of(expectedPosition));
 
         // when
         Optional<Integer> result = tokenQueryService.getWaitingPosition(userId);
@@ -58,7 +59,7 @@ public class TokenQueryServiceTest {
                 .hasMessageContaining("토큰이 존재하지 않습니다.");
     }
 
-    @DisplayName("WAITING 상태가 아닌 유저의 순위는 -1로 반환된다")
+    @DisplayName("WAITING 상태가 아닌 유저의 순위는 0으로 반환된다")
     @Test
     void getWaitingPosition_should_return_minus_one_when_not_waiting() {
         // given
@@ -67,7 +68,7 @@ public class TokenQueryServiceTest {
         token.activate(); // ACTIVE 상태로 변경
 
         when(tokenRepository.findByUserId(userId)).thenReturn(Optional.of(token));
-        when(tokenRepository.getWaitingPosition(userId)).thenReturn(-1);
+        when(tokenRepository.getWaitingPosition(userId)).thenReturn(Optional.empty());
 
         // when
         QueueTokenStatusResponse result = tokenQueryService.getTokenStatus(userId);
@@ -75,6 +76,6 @@ public class TokenQueryServiceTest {
         // then
         assertThat(result.userId()).isEqualTo(userId);
         assertThat(result.status()).isEqualTo(TokenStatus.ACTIVE);
-        assertThat(result.position()).isEqualTo(-1);
+        assertThat(result.position()).isEqualTo(0);
     }
 }

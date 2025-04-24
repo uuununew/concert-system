@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.*;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -55,7 +56,7 @@ public class TokenCommandServiceTest{
         // given : 저장된 토큰이 없는 userId 설정
         Long userId = 1L;
         when(tokenRepository.findByUserId(userId)).thenReturn(Optional.empty());
-        when(tokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(tokenRepository.enqueue(eq(userId), eq(clock))).thenAnswer(inv -> new QueueToken(userId, LocalDateTime.now(clock)));
 
         // when : 토큰 발급 호출
         QueueToken token = tokenCommandService.issue(userId);
@@ -93,12 +94,13 @@ public class TokenCommandServiceTest{
     }
 
     @Test
-    @DisplayName("토큰이 유효하면 활성화된다")
+    @DisplayName("토큰이 유효하고 FIFO 순서일 때 활성화된다")
     void activate_valid_token() {
         // given : 아직 만료되지 않은 토큰
         Long userId = 3L;
         QueueToken token = new QueueToken(userId, LocalDateTime.now(clock).minusMinutes(2));
         when(tokenRepository.findByUserId(userId)).thenReturn(Optional.of(token));
+        when(tokenRepository.findAllByStatusOrderByIssuedAt(TokenStatus.WAITING)).thenReturn(List.of(token));
 
         // when : 토큰 활성화 시도
         tokenCommandService.activate(userId);
@@ -119,6 +121,21 @@ public class TokenCommandServiceTest{
         CustomException ex = assertThrows(CustomException.class, () -> tokenCommandService.activate(userId));
         assertEquals(ErrorCode.TOKEN_NOT_FOUND, ex.getErrorCode());
         assertEquals(TokenStatus.EXPIRED, token.getStatus());
+    }
+
+    @Test
+    @DisplayName("FIFO 순서가 아니면 예외가 발생한다")
+    void activate_invalid_order_throws() {
+        Long userId = 5L;
+        QueueToken token = new QueueToken(userId, LocalDateTime.now(clock).minusMinutes(1));
+        QueueToken firstInQueue = new QueueToken(999L, LocalDateTime.now(clock).minusMinutes(2));
+
+        when(tokenRepository.findByUserId(userId)).thenReturn(Optional.of(token));
+        when(tokenRepository.findAllByStatusOrderByIssuedAt(TokenStatus.WAITING)).thenReturn(List.of(firstInQueue, token));
+
+        CustomException ex = assertThrows(CustomException.class, () -> tokenCommandService.activate(userId));
+        assertEquals(ErrorCode.INVALID_TOKEN_ORDER, ex.getErrorCode());
+        assertEquals(TokenStatus.WAITING, token.getStatus());
     }
 
     @Test
@@ -175,5 +192,23 @@ public class TokenCommandServiceTest{
 
         // then : TokenManager로 위임되었는지 검증
         verify(tokenManager).expireOverdueTokens(eq(5), any());
+    }
+
+    @DisplayName("대기 중인 토큰이 있을 경우 활성화 시도")
+    @Test
+    void activateEligibleTokens_should_call_manager() {
+        // given
+        LocalDateTime now = LocalDateTime.now();
+        Clock fixedClock = Clock.fixed(now.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
+        TokenRepository mockRepo = mock(TokenRepository.class);
+        TokenManager mockManager = mock(TokenManager.class);
+
+        TokenCommandService service = new TokenCommandService(mockRepo, mockManager, fixedClock, 15);
+
+        // when
+        service.activateEligibleTokens();
+
+        // then
+        verify(mockManager).activateTokens(now);
     }
 }
