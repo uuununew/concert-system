@@ -41,8 +41,22 @@ public class TokenCommandService {
 
     @Transactional
     public QueueToken issue(Long userId) {
-        return tokenRepository.findByUserId(userId)
-                .orElseGet(() -> tokenRepository.enqueue(userId, clock));
+        Optional<QueueToken> optionalToken = tokenRepository.findByUserId(userId);
+
+        if (optionalToken.isPresent()) {
+            QueueToken token = optionalToken.get();
+
+            // 만료 검증
+            if (!token.isExpired(LocalDateTime.now(clock), expireMinutes)
+                    && token.isWaitingOrActive()) { // WAITING or ACTIVE 상태라면
+                return token; // 재사용
+            }
+
+            token.expire();
+        }
+
+        // 새 토큰 발급
+        return tokenRepository.enqueue(userId, clock);
     }
 
     public void activate(Long userId) {

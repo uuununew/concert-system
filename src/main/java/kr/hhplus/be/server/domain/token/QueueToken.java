@@ -66,4 +66,9 @@ public class QueueToken {
     public boolean isActive() {
         return this.status == TokenStatus.ACTIVE;
     }
+
+    //토큰 유효 여부 확인
+    public boolean isWaitingOrActive() {
+        return this.status == TokenStatus.WAITING || this.status == TokenStatus.ACTIVE;
+    }
 }

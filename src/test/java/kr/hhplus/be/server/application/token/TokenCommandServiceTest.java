@@ -79,6 +79,23 @@ public class TokenCommandServiceTest{
     }
 
     @Test
+    @DisplayName("만료된 토큰이 존재할 경우 새 토큰을 발급한다")
+    void issue_expired_token_creates_new() {
+        // given
+        Long userId = 8L;
+        QueueToken expiredToken = new QueueToken(userId, LocalDateTime.now(clock).minusMinutes(10));
+        when(tokenRepository.findByUserId(userId)).thenReturn(Optional.of(expiredToken));
+        when(tokenRepository.enqueue(eq(userId), eq(clock))).thenAnswer(inv -> new QueueToken(userId, LocalDateTime.now(clock)));
+
+        // when
+        QueueToken newToken = tokenCommandService.issue(userId);
+
+        // then
+        assertNotSame(expiredToken, newToken); //기존 만료된 토큰과 다른 토큰
+        assertEquals(TokenStatus.WAITING, newToken.getStatus());
+    }
+
+    @Test
     @DisplayName("이미 토큰이 있으면 기존 것을 반환한다")
     void issue_existing_token() {
         // given : 이미 발급된 토큰이 존재하는 userId
@@ -199,6 +216,34 @@ public class TokenCommandServiceTest{
     void activateEligibleTokens_should_call_manager() {
         // given
         LocalDateTime now = LocalDateTime.now();
+        Clock fixedClock = Clock.fixed(now.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
+        TokenRepository mockRepo = mock(TokenRepository.class);
+        TokenManager mockManager = mock(TokenManager.class);
+
+        TokenCommandService service = new TokenCommandService(mockRepo, mockManager, fixedClock, 15);
+
+        // when
+        service.activateEligibleTokens();
+
+        // then
+        verify(mockManager).activateTokens(now);
+    }
+
+    @Test
+    @DisplayName("발급 후 expireOverdueTokens 호출 시 만료되어야 한다")
+    void expire_tokens_after_time() {
+        // when
+        tokenCommandService.expireOverdueTokens();
+
+        // then
+        verify(tokenManager).expireOverdueTokens(eq(5), any());
+    }
+
+    @Test
+    @DisplayName("발급 후 activateEligibleTokens 호출 시 가장 오래된 토큰이 활성화된다")
+    void activate_earliest_waiting_token() {
+        // given
+        LocalDateTime now = LocalDateTime.now(clock);
         Clock fixedClock = Clock.fixed(now.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
         TokenRepository mockRepo = mock(TokenRepository.class);
         TokenManager mockManager = mock(TokenManager.class);
