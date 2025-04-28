@@ -1,13 +1,16 @@
 package kr.hhplus.be.server.domain.cash;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CashHistory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,20 +28,21 @@ public class CashHistory {
 
     private LocalDateTime createdAt;
 
-    protected CashHistory() {}
+    private LocalDateTime updatedAt;
 
-    public CashHistory(UserCash userCash, BigDecimal amount, CashHistoryType type) {
+    private CashHistory(UserCash userCash, CashHistoryType type, BigDecimal amount) {
         this.userCash = userCash;
-        this.amount = amount;
         this.type = type;
+        this.amount = amount;
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     public static CashHistory charge(UserCash userCash, BigDecimal amount) {
-        return new CashHistory(userCash, amount, CashHistoryType.CHARGE);
+        return new CashHistory(userCash, CashHistoryType.CHARGE, amount);
     }
 
     public static CashHistory use(UserCash userCash, BigDecimal amount) {
-        return new CashHistory(userCash, amount, CashHistoryType.USE);
+        return new CashHistory(userCash, CashHistoryType.USE, amount);
     }
 }

@@ -1,6 +1,7 @@
 package kr.hhplus.be.server.support.exception;
 
 import jakarta.persistence.OptimisticLockException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,37 +17,49 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.validation.ObjectError;
 
-
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * 비즈니스 로직 에러 (CustomException)
+     */
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ErrorResponse> handleCustomException(CustomException e) {
+        log.error("CustomException 발생! errorCode = {}", e.getErrorCode());
         ErrorCode errorCode = e.getErrorCode();
         return ResponseEntity
                 .status(errorCode.getStatus())
-                .body(new ErrorResponse(errorCode.getCode(), errorCode.getMessage()));
+                .body(new ErrorResponse(errorCode));
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleException(Exception e) {
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse("E500", "내부 서버 오류"));
-    }
-
+    /**
+     * 트랜잭션 에러 (OptimisticLock 포함)
+     */
     @ExceptionHandler(TransactionSystemException.class)
     public ResponseEntity<ErrorResponse> handleTransactionSystemException(TransactionSystemException e) {
-        Throwable root = e.getRootCause();
+        Throwable rootCause = e.getRootCause();
+        log.error("TransactionSystemException occurred", e);
 
-        if (root instanceof OptimisticLockException || root instanceof OptimisticLockingFailureException) {
+        if (rootCause instanceof OptimisticLockException || rootCause instanceof OptimisticLockingFailureException) {
             return ResponseEntity
-                    .status(HttpStatus.CONFLICT)
-                    .body(new ErrorResponse("E409", "낙관적 락 충돌이 발생했습니다."));
+                    .status(ErrorCode.OPTIMISTIC_LOCK_CONFLICT.getStatus())
+                    .body(new ErrorResponse(ErrorCode.OPTIMISTIC_LOCK_CONFLICT));
         }
 
         return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse("E500", "트랜잭션 오류"));
+                .status(ErrorCode.INTERNAL_SERVER_ERROR.getStatus())
+                .body(new ErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR));
+    }
+
+    /**
+     * 그 외 예상하지 못한 에러
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGeneralException(Exception e) {
+        log.error("Unhandled Exception occurred", e);
+        return ResponseEntity
+                .status(ErrorCode.INTERNAL_SERVER_ERROR.getStatus())
+                .body(new ErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR));
     }
 }

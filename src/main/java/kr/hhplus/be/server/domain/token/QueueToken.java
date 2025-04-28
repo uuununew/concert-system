@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 /**
@@ -23,6 +24,7 @@ public class QueueToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "user_id", nullable = false)
     private Long userId;
 
     @Enumerated(EnumType.STRING)
@@ -37,10 +39,10 @@ public class QueueToken {
     }
 
     // 정적 팩토리 메서드
-    public static QueueToken create(Long userId) {
+    public static QueueToken create(Long userId, Clock clock) {
         QueueToken token = new QueueToken();
         token.userId = userId;
-        token.issuedAt = LocalDateTime.now();
+        token.issuedAt = LocalDateTime.now(clock);
         token.status = TokenStatus.WAITING;
         return token;
     }
@@ -63,5 +65,10 @@ public class QueueToken {
 
     public boolean isActive() {
         return this.status == TokenStatus.ACTIVE;
+    }
+
+    //토큰 유효 여부 확인
+    public boolean isWaitingOrActive() {
+        return this.status == TokenStatus.WAITING || this.status == TokenStatus.ACTIVE;
     }
 }

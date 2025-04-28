@@ -16,17 +16,18 @@ public class TokenQueryService {
 
     private final TokenRepository tokenRepository;
 
+
     public QueueTokenStatusResponse getTokenStatus(Long userId) {
         QueueToken token = tokenRepository.findByUserId(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "토큰이 존재하지 않습니다."));
 
-        int position = tokenRepository.getWaitingPosition(userId);
+        int position = tokenRepository.getWaitingPosition(userId).orElse(0);
 
         return new QueueTokenStatusResponse(userId, token.getStatus(), position);
     }
 
-    // [GET] 대기열 순서만 조회
+    // 대기열 순서만 조회
     public Optional<Integer> getWaitingPosition(Long userId) {
-        return Optional.of(tokenRepository.getWaitingPosition(userId));
+        return tokenRepository.getWaitingPosition(userId);
     }
 }

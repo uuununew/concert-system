@@ -1,6 +1,7 @@
 package kr.hhplus.be.server.domain.token;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * TokenManager
@@ -19,6 +20,7 @@ public class TokenManager {
         this.repository = repository;
     }
 
+    //토큰 만료
     public void expireOverdueTokens(int expireMinutes, LocalDateTime now) {
         for (QueueToken token : repository.findAll()) {
             if (token.getStatus() == TokenStatus.WAITING && token.isExpired(now, expireMinutes)) {
@@ -31,5 +33,25 @@ public class TokenManager {
         return (int) repository.findAll().stream()
                 .filter(QueueToken::isActive)
                 .count();
+    }
+
+    //토큰 활성화
+    public void activateTokens(LocalDateTime now) {
+        repository.findAllByStatusAndIssuedAtBefore(TokenStatus.WAITING, now.minusMinutes(3))
+                .stream()
+                .findFirst()
+                .ifPresent(QueueToken::activate);
+    }
+
+    /**
+     * 큐에서 가장 먼저 대기 중인 사용자 토큰만 ACTIVE로 전환
+     */
+    public void activateNextTokenInQueue() {
+        List<QueueToken> waitingTokens = repository.findAllByStatusOrderByIssuedAt(TokenStatus.WAITING);
+        if (!waitingTokens.isEmpty()) {
+            QueueToken next = waitingTokens.get(0); // FIFO
+            next.activate();
+            repository.save(next);
+        }
     }
 }

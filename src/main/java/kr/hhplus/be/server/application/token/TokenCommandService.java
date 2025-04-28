@@ -3,11 +3,14 @@ package kr.hhplus.be.server.application.token;
 import kr.hhplus.be.server.domain.token.QueueToken;
 import kr.hhplus.be.server.domain.token.TokenManager;
 import kr.hhplus.be.server.domain.token.TokenRepository;
+import kr.hhplus.be.server.domain.token.TokenStatus;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -36,22 +39,43 @@ public class TokenCommandService {
         this.expireMinutes = expireMinutes;
     }
 
+    @Transactional
     public QueueToken issue(Long userId) {
-        return tokenRepository.findByUserId(userId)
-                .orElseGet(() -> {
-                    QueueToken newToken = new QueueToken(userId, LocalDateTime.now(clock));
-                    return tokenRepository.save(newToken);
-                });
+        Optional<QueueToken> optionalToken = tokenRepository.findByUserId(userId);
+
+        if (optionalToken.isPresent()) {
+            QueueToken token = optionalToken.get();
+
+            // 만료 검증
+            if (!token.isExpired(LocalDateTime.now(clock), expireMinutes)
+                    && token.isWaitingOrActive()) { // WAITING or ACTIVE 상태라면
+                return token; // 재사용
+            }
+
+            token.expire();
+        }
+
+        // 새 토큰 발급
+        return tokenRepository.enqueue(userId, clock);
     }
 
     public void activate(Long userId) {
         QueueToken token = tokenRepository.findByUserId(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다."));
+
         if (token.isExpired(LocalDateTime.now(clock), expireMinutes)) {
             token.expire();
             throw new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다.");
         }
+
+        // 순서 검증: 대기열 가장 앞에 있는 유저인지 확인
+        List<QueueToken> waitingTokens = tokenRepository.findAllByStatusOrderByIssuedAt(TokenStatus.WAITING);
+        if (waitingTokens.isEmpty() || !waitingTokens.get(0).getUserId().equals(userId)) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN_ORDER);
+        }
+
         token.activate();
+        tokenRepository.save(token);
     }
 
     public void complete(Long userId) {
@@ -77,6 +101,10 @@ public class TokenCommandService {
 
     public void expireOverdueTokens() {
         tokenManager.expireOverdueTokens(expireMinutes, LocalDateTime.now(clock));
+    }
+
+    public void activateEligibleTokens() {
+        tokenManager.activateTokens(LocalDateTime.now(clock));
     }
 
 }

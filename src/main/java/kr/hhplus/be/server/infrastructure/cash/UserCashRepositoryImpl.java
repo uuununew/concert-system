@@ -4,7 +4,6 @@ import kr.hhplus.be.server.domain.cash.UserCash;
 import kr.hhplus.be.server.domain.cash.UserCashRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -25,7 +24,7 @@ public class UserCashRepositoryImpl implements UserCashRepository {
     }
 
     @Override
-    public Optional<UserCash> findByUserIdWithOptimistic(Long userId) {
-        return userCashJpaRepository.findByUserIdWithOptimistic(userId);
+    public Optional<UserCash> findByUserIdForUpdate(Long userId) {
+        return userCashJpaRepository.findByUserIdForUpdate(userId);
     }
 }
