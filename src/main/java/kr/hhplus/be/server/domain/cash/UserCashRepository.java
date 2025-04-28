@@ -1,7 +1,5 @@
 package kr.hhplus.be.server.domain.cash;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.Optional;
 
 public interface UserCashRepository{
@@ -9,6 +7,6 @@ public interface UserCashRepository{
     UserCash save(UserCash userCash);
 
     //낙관적 락
-    Optional<UserCash> findByUserIdWithOptimistic(Long userId);
+    Optional<UserCash> findByUserIdForUpdate(Long userId);
 }
 

@@ -15,5 +15,5 @@ public interface UserCashJpaRepository extends JpaRepository<UserCash, Long> {
     //낙관적 락
     @Lock(LockModeType.OPTIMISTIC)
     @Query("SELECT uc FROM UserCash uc WHERE uc.userId = :userId")
-    Optional<UserCash> findByUserIdWithOptimistic(@Param("userId") Long userId);
+    Optional<UserCash> findByUserIdForUpdate(@Param("userId") Long userId);
 }
