@@ -52,6 +52,9 @@ dependencies {
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	testImplementation ("com.h2database:h2")
 
+	//추가
+	testImplementation ("uk.org.lidalia:slf4j-test:1.2.0")
+
 	// Lombok 추가
 	compileOnly ("org.projectlombok:lombok")
 	annotationProcessor ("org.projectlombok:lombok")
