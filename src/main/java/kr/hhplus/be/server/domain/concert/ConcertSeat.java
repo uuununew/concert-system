@@ -38,6 +38,9 @@ public class ConcertSeat {
 
     private LocalDateTime updatedAt;
 
+    @Version
+    private Long version;
+
     public ConcertSeat(
             Long id,
             Concert concert,

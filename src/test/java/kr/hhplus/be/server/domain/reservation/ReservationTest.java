@@ -85,7 +85,8 @@ public class ReservationTest {
         );
         BigDecimal amount = BigDecimal.valueOf(10000);
 
-        Reservation reservation = Reservation.create(user, seat, amount).pay();
+        Reservation reservation = Reservation.create(user, seat, amount);
+        reservation.pay();
 
         assertThatThrownBy(reservation::cancel)
                 .isInstanceOf(CustomException.class)
@@ -105,10 +106,10 @@ public class ReservationTest {
 
         Reservation reservation = Reservation.create(user, seat, amount);
 
-        Reservation paid = reservation.pay();
+        reservation.pay();
 
-        assertThat(paid.getStatus()).isEqualTo(ReservationStatus.PAID);
-        assertThat(paid.getPaidAt()).isNotNull();
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.PAID);
+        assertThat(reservation.getPaidAt()).isNotNull();
     }
 
 

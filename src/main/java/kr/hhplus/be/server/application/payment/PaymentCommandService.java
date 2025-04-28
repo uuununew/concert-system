@@ -11,6 +11,7 @@ import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +27,7 @@ public class PaymentCommandService {
      * - 예약 상태를 PAID로 변경
      * - 결제 정보 저장
      */
+    @Transactional
     public Payment pay(CreatePaymentCommand command) {
         Reservation reservation = reservationRepository.findById(command.reservationId())
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "예약 정보를 찾을 수 없습니다."));
@@ -50,6 +52,7 @@ public class PaymentCommandService {
     /**
      * 결제 취소 처리
      */
+    @Transactional
     public Payment cancel(Long paymentId) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "결제 정보를 찾을 수 없습니다."));

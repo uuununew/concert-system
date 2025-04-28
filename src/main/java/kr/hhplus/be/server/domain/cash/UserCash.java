@@ -22,6 +22,9 @@ public class UserCash {
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
+    @Version // 낙관적 락 적용
+    private Long version;
+
     protected UserCash() {
     }
 

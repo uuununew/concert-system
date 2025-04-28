@@ -39,6 +39,9 @@ public class Reservation {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    @Version
+    private Long version;
+
     // 생성자
     public Reservation(
             Long id,
@@ -78,21 +81,13 @@ public class Reservation {
     }
 
     // 결제 완료 처리
-    public Reservation pay() {
+    public void pay() {
         if (this.status != ReservationStatus.RESERVED) {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "RESERVED 상태일 때만 결제 가능합니다.");
         }
-        return new Reservation(
-                this.id,
-                this.userId,
-                this.concertSeat,
-                this.concertId,
-                this.price,
-                ReservationStatus.PAID,
-                LocalDateTime.now(),
-                this.createdAt,
-                LocalDateTime.now()
-        );
+        this.status = ReservationStatus.PAID;
+        this.paidAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     // 취소 처리

@@ -31,6 +31,8 @@
 [인덱스 최적화 보고서](https://sunrise-sunfish-45d.notion.site/DB-1d7cc24e980180fe948ac908e6ea12be?pvs=4)
 
 
+### 동시성 제어 보고서
+[동시성 제어 보고서](https://sunrise-sunfish-45d.notion.site/1decc24e9801802389cac505382fa35f?pvs=4)
 
 
 

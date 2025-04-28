@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.application.cash;
 
+import jakarta.persistence.EntityManager;
 import kr.hhplus.be.server.domain.cash.CashHistoryRepository;
 import kr.hhplus.be.server.domain.cash.UserCash;
 import kr.hhplus.be.server.domain.cash.UserCashRepository;
@@ -26,12 +27,14 @@ public class CashCommandServiceTest {
     private UserCashRepository userCashRepository;
     private CashCommandService service;
     private CashHistoryRepository cashHistoryRepository;
+    private EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
         userCashRepository = mock(UserCashRepository.class);
         cashHistoryRepository = mock(CashHistoryRepository.class);
-        service = new CashCommandService(userCashRepository, cashHistoryRepository);
+        entityManager = mock(EntityManager.class);
+        service = new CashCommandService(userCashRepository, cashHistoryRepository, entityManager);
     }
 
     @Test

@@ -14,4 +14,7 @@ public interface ConcertSeatRepository{
     Optional<ConcertSeat> findById(Long id);
 
     boolean existsByConcert_Id(Long concertId);
+
+    //락
+    Optional<ConcertSeat> findByIdWithOptimistic(Long id);
 }

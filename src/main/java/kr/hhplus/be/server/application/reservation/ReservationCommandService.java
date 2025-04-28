@@ -13,10 +13,12 @@ import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class ReservationCommandService {
 
@@ -41,27 +43,25 @@ public class ReservationCommandService {
         }
 
         // 2: concertSeat 객체 조회
-        ConcertSeat seat = concertSeatRepository.findById(command.concertSeatId())
+        ConcertSeat seat = concertSeatRepository.findByIdWithOptimistic(command.concertSeatId())
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 좌석 정보를 찾을 수 없습니다."));
 
-        // 3: 이미 예약된 좌석인지 확인
-        boolean alreadyReserved = reservationRepository
-                .findByConcertSeatAndStatus(seat, ReservationStatus.RESERVED)
-                .isPresent();
-
-        if (alreadyReserved) {
-            throw new CustomException(ErrorCode.INVALID_REQUEST, "이미 예약된 좌석입니다.");
-        }
+        // 3: 좌석 상태 변경
+        seat.reserve();
 
         // 4 : 예약 생성
         User user = User.from(command.userId());
         Reservation reservation = Reservation.create(user, seat, command.price());
 
 
-        // 5: 토큰 사용 완료 처리
-        tokenCommandService.complete(command.userId());
-
-        return reservationRepository.save(reservation);
+        // 5: 예약 저장 및 충돌 처리
+        try {
+            Reservation saved = reservationRepository.save(reservation);
+            tokenCommandService.complete(command.userId());
+            return saved;
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+            throw new CustomException(ErrorCode.ALREADY_RESERVED);
+        }
     }
 
     /**

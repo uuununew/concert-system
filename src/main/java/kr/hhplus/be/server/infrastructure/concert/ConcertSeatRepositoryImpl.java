@@ -39,4 +39,9 @@ public class ConcertSeatRepositoryImpl implements ConcertSeatRepository {
     public boolean existsByConcert_Id(Long concertId) {
         return concertSeatJpaRepository.existsByConcert_Id(concertId);
     }
+
+    @Override
+    public Optional<ConcertSeat> findByIdWithOptimistic(Long id) {
+        return concertSeatJpaRepository.findByIdWithOptimistic(id);
+    }
 }
