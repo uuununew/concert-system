@@ -41,6 +41,10 @@ dependencies {
 	implementation ("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation ("org.springframework.boot:spring-boot-starter-validation")
 
+	//redis
+	implementation("org.springframework.boot:spring-boot-starter-data-redis")
+	testImplementation("org.testcontainers:testcontainers:1.19.0")
+
     // DB
 	runtimeOnly("com.mysql:mysql-connector-j")
 
