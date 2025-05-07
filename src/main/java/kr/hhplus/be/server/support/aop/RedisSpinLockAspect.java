@@ -16,6 +16,8 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 
+import java.lang.reflect.Method;
+
 @Slf4j
 @Aspect
 @Component
@@ -27,7 +29,12 @@ public class RedisSpinLockAspect {
     private final ExpressionParser parser = new SpelExpressionParser();
 
     @Around("@annotation(kr.hhplus.be.server.support.lock.RedisSpinLock)")
-    public Object applySpinLock(ProceedingJoinPoint joinPoint, RedisSpinLock redisSpinLock) throws Throwable {
+    public Object applySpinLock(ProceedingJoinPoint joinPoint) throws Throwable {
+
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        Method method = signature.getMethod();
+        RedisSpinLock redisSpinLock = method.getAnnotation(RedisSpinLock.class);
+
         String key = parseKey(joinPoint, redisSpinLock.key());
         long ttl = redisSpinLock.ttl();
         long retryInterval = redisSpinLock.retryInterval();
