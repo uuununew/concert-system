@@ -1,35 +1,27 @@
 package kr.hhplus.be.server.application.reservation.concurrency;
 
-import jakarta.persistence.OptimisticLockException;
-import kr.hhplus.be.server.application.concert.ConcertSeatCommandService;
 import kr.hhplus.be.server.application.concert.ConcertService;
 import kr.hhplus.be.server.application.concert.CreateConcertCommand;
 import kr.hhplus.be.server.application.reservation.CreateReservationCommand;
 import kr.hhplus.be.server.application.reservation.ReservationCommandService;
-import kr.hhplus.be.server.config.TestContainerConfig;
 import kr.hhplus.be.server.domain.concert.*;
+import kr.hhplus.be.server.domain.reservation.Reservation;
 import kr.hhplus.be.server.domain.token.QueueToken;
 import kr.hhplus.be.server.domain.token.TokenRepository;
-import kr.hhplus.be.server.support.concurrency.ConcurrencyTestExecutor;
+import kr.hhplus.be.server.support.config.RedisTestContainerConfig;
 import kr.hhplus.be.server.support.exception.CustomException;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.annotation.DirtiesContext;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,8 +32,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @SpringBootTest
-@Testcontainers
-public class ReservationConcurrencyTest extends TestContainerConfig {
+@Import(RedisTestContainerConfig.class)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+public class ReservationConcurrencyTest{
 
     @Autowired
     private ConcertService concertService;
@@ -78,13 +71,17 @@ public class ReservationConcurrencyTest extends TestContainerConfig {
     void setUp(){
         //콘서트 생성
         Concert concert = concertService.registerConcert(new CreateConcertCommand(
-            "콜드플레이", 1, ConcertStatus.OPENED, LocalDateTime.of(2025, 5, 1,  20, 0)));
+            "콜드플레이", 1, ConcertStatus.OPENED, LocalDateTime.of(2025, 5, 20,  20, 0)));
 
         //좌석 생성
         ConcertSeat seat = ConcertSeat.of(
                 concert, "1", "1층", "A", "R", BigDecimal.valueOf(100000));
         concertSeatRepository.save(seat);
         seatId = seat.getId();
+
+        // 미리 대기열에 WAITING 토큰 등록 (가장 먼저 줄 선 사람)
+        QueueToken waitingToken = new QueueToken(1L, LocalDateTime.now().minusSeconds(5));
+        tokenRepository.save(waitingToken);
     }
 
     @DisplayName("동시에 10명이 같은 좌석을 예약할 경우 1명만 성공하고 나머지는 예외 발생")
@@ -99,36 +96,48 @@ public class ReservationConcurrencyTest extends TestContainerConfig {
 
         // when : 동시에 각기 다른 유저가 같은 좌석을 예약 시도
         for (int i = 0; i < threadCount; i++) {
+            final long userId = i + 1;
+
             executorService.submit(() -> {
                 try {
-                    Long userId = Thread.currentThread().getId();
-                    tokenRepository.save(new QueueToken(userId, LocalDateTime.now()));
+                    Thread.sleep((long) (Math.random() * 50));
 
-                    reservationCommandService.reserve(
-                            new CreateReservationCommand(userId, seatId, BigDecimal.valueOf(10000))
-                    );
-
-                    successCount.incrementAndGet();
-                } catch (Exception e) {
-                    if (e instanceof ObjectOptimisticLockingFailureException || e instanceof OptimisticLockException || e instanceof CustomException) {
-                        conflictCount.incrementAndGet(); // 낙관적 락 충돌 등 예상 가능한 예외
-                    } else {
-                        throw new RuntimeException("Unexpected exception", e);
+                    if (userId != 1L) {
+                        QueueToken token = new QueueToken(userId, LocalDateTime.now());
+                        tokenRepository.save(token); // WAITING 상태
                     }
+
+                    // 락 획득에 실패하면 null 또는 예외 발생할 수 있음
+                    Reservation reservation = reservationCommandService.reserve(
+                            new CreateReservationCommand(userId, seatId, BigDecimal.valueOf(10000)));
+
+                    if (reservation != null) {
+                        successCount.incrementAndGet(); // 실제 예약 성공 시
+                    } else {
+                        conflictCount.incrementAndGet(); // 락 실패
+                    }
+
+                } catch (CustomException e) {
+                    conflictCount.incrementAndGet();
+                } catch (Exception e) {
+                    e.printStackTrace();
                 } finally {
                     latch.countDown();
                 }
             });
         }
 
-        latch.await(5, TimeUnit.SECONDS);
-
-        // then : 성공한 예약 요청은 오직 1건, 나머지는 예외 발생
-        log.info("✅ [{} Threads] 성공: {} / 예외: {}", threadCount, successCount.get(), conflictCount.get());
-        assertThat(successCount.get()).isEqualTo(1);
-        assertThat(conflictCount.get()).isEqualTo(threadCount - 1);
-
+        latch.await(10, TimeUnit.SECONDS);
         executorService.shutdown();
+
+        //then
+        assertThat(successCount.get())
+                .withFailMessage("성공 수가 예상과 다릅니다. 기대값: 1, 실제값: %d", successCount.get())
+                .isEqualTo(1);
+
+        assertThat(conflictCount.get())
+                .withFailMessage("실패 수가 예상과 다릅니다. 기대값: %d, 실제값: %d", threadCount - 1, conflictCount.get())
+                .isEqualTo(threadCount - 1);
     }
 
 }
