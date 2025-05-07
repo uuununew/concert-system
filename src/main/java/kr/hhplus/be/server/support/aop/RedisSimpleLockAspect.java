@@ -8,6 +8,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.core.Ordered;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.Order;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.ExpressionParser;
@@ -15,6 +16,8 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 import kr.hhplus.be.server.support.lock.RedisSimpleLock;
+
+import java.lang.reflect.Method;
 
 @Slf4j
 @Aspect
@@ -26,16 +29,28 @@ public class RedisSimpleLockAspect {
     private final RedisLockRepository redisLockRepository;
     private final ExpressionParser parser = new SpelExpressionParser();
 
-    @Around("@annotation(kr.hhplus.be.server.support.lock.RedisSimpleLock)")
-    public Object applySimpleLock(ProceedingJoinPoint joinPoint, RedisSimpleLock redisSimpleLock) throws Throwable {
+    @Around("execution(@kr.hhplus.be.server.support.lock.RedisSimpleLock * *(..))")
+    public Object applySimpleLock(ProceedingJoinPoint joinPoint) throws Throwable {
+
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        Method method = signature.getMethod();
+        RedisSimpleLock redisSimpleLock = AnnotationUtils.findAnnotation(method, RedisSimpleLock.class);
+        if (redisSimpleLock == null) {
+            Method targetMethod = joinPoint.getTarget().getClass().getMethod(method.getName(), method.getParameterTypes());
+            redisSimpleLock = AnnotationUtils.findAnnotation(targetMethod, RedisSimpleLock.class);
+        }
+
+        if (redisSimpleLock == null) {
+            throw new IllegalStateException("@RedisSimpleLock annotation not found!");
+        }
+
         String key = parseKey(joinPoint, redisSimpleLock.key());
         long ttl = redisSimpleLock.ttl();
 
         boolean acquired = redisLockRepository.acquireLock(key, ttl);
         if (!acquired) {
-            throw new IllegalStateException("Simple Redis 락 실패: " + key);
+            throw new RuntimeException("요청하신 작업을 처리할 수 없습니다. (락 획득 실패, key: " + key + ")");
         }
-
         try {
             return joinPoint.proceed();
         } finally {
