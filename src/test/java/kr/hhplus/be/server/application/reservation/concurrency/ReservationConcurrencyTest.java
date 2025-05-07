@@ -18,7 +18,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -32,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @SpringBootTest
+@ActiveProfiles("test")
 @Import(RedisTestContainerConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class ReservationConcurrencyTest{
@@ -51,20 +54,16 @@ public class ReservationConcurrencyTest{
     @Autowired
     private ReservationCommandService reservationCommandService;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
     private Long seatId;
 
     private long startTime;
 
     @BeforeEach
-    void startTimer() {
-        startTime = System.currentTimeMillis();
-    }
-
-    @AfterEach
-    void endTimer() {
-        long endTime = System.currentTimeMillis();
-        long elapsed = endTime - startTime;
-        log.info("⏱️ 테스트 실행 시간: {}ms", elapsed);
+    void checkProxy() {
+        System.out.println("reservationCommandService class: " + reservationCommandService.getClass());
     }
 
     @BeforeEach
@@ -78,6 +77,9 @@ public class ReservationConcurrencyTest{
                 concert, "1", "1층", "A", "R", BigDecimal.valueOf(100000));
         concertSeatRepository.save(seat);
         seatId = seat.getId();
+
+        // Redis에 seat 락 key 미리 삭제
+        redisTemplate.delete("seat:" + seatId);
 
         // 미리 대기열에 WAITING 토큰 등록 (가장 먼저 줄 선 사람)
         QueueToken waitingToken = new QueueToken(1L, LocalDateTime.now().minusSeconds(5));
@@ -117,7 +119,7 @@ public class ReservationConcurrencyTest{
                         conflictCount.incrementAndGet(); // 락 실패
                     }
 
-                } catch (CustomException e) {
+                } catch (CustomException | IllegalStateException e) {
                     conflictCount.incrementAndGet();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -129,6 +131,8 @@ public class ReservationConcurrencyTest{
 
         latch.await(10, TimeUnit.SECONDS);
         executorService.shutdown();
+
+        log.info("성공 수: {}, 실패 수: {}", successCount.get(), conflictCount.get());
 
         //then
         assertThat(successCount.get())
