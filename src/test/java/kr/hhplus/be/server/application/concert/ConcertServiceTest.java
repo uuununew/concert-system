@@ -10,6 +10,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -52,16 +56,18 @@ public class ConcertServiceTest {
         Concert concert2 = new Concert("BTS - 부산", 2, ConcertStatus.CLOSED, LocalDateTime.now().plusDays(2));
         List<Concert> concerts = Arrays.asList(concert1, concert2);
 
-        when(concertRepository.findAll()).thenReturn(concerts);
+        Page<Concert> page = new PageImpl<>(concerts);
+
+        when(concertRepository.findAll(any(Pageable.class))).thenReturn(page);
 
         // when : 전체 콘서트 목록 조회
-        List<Concert> result = concertService.getConcertList();
+        Page<Concert> result = concertService.getConcertList(PageRequest.of(0, 10));
 
         // then
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).getTitle()).isEqualTo("BTS - 서울");
-        assertThat(result.get(1).getTitle()).isEqualTo("BTS - 부산");
-        verify(concertRepository).findAll();
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).getTitle()).isEqualTo("BTS - 서울");
+        assertThat(result.getContent().get(1).getTitle()).isEqualTo("BTS - 부산");
+        verify(concertRepository).findAll(any(Pageable.class));
     }
 
     @DisplayName("ID로 콘서트를 조회할 수 있다")

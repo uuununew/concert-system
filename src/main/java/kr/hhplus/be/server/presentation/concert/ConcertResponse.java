@@ -4,13 +4,14 @@ import kr.hhplus.be.server.domain.concert.Concert;
 import kr.hhplus.be.server.domain.concert.ConcertStatus;
 import lombok.Getter;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
  * 콘서트 응답 DTO
  */
 @Getter
-public class ConcertResponse {
+public class ConcertResponse implements Serializable {
 
     private final Long id;
     private final String title;

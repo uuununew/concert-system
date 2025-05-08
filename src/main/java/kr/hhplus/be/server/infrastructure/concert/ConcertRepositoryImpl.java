@@ -3,6 +3,8 @@ package kr.hhplus.be.server.infrastructure.concert;
 import kr.hhplus.be.server.domain.concert.Concert;
 import kr.hhplus.be.server.domain.concert.ConcertRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -32,4 +34,13 @@ public class ConcertRepositoryImpl implements ConcertRepository {
     public boolean existsById(Long id) {
         return concertJpaRepository.existsById(id);
     }
+
+    @Override
+    public Page<Concert> findAll(Pageable pageable) {return concertJpaRepository.findAll(pageable);}
+
+    @Override
+    public void deleteById(Long id) {concertJpaRepository.deleteById(id);}
+
+    @Override
+    public void deleteAll() {concertJpaRepository.deleteAll();}
 }

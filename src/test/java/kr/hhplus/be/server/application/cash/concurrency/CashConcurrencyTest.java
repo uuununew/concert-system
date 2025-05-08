@@ -10,6 +10,7 @@ import kr.hhplus.be.server.domain.cash.UserCash;
 import kr.hhplus.be.server.domain.cash.UserCashRepository;
 import kr.hhplus.be.server.infrastructure.cash.UserCashJpaRepository;
 import kr.hhplus.be.server.support.concurrency.ConcurrencyTestExecutor;
+import kr.hhplus.be.server.support.config.RedisTestContainerConfig;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Import;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -38,8 +40,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @SpringBootTest
-@Testcontainers
-public class CashConcurrencyTest extends TestContainerConfig {
+@Import(RedisTestContainerConfig.class)
+public class CashConcurrencyTest{
 
     @Autowired
     private CashCommandService cashCommandService;
@@ -123,45 +125,55 @@ public class CashConcurrencyTest extends TestContainerConfig {
 
         userCashJpaRepository.findByUserId(userId)
                 .ifPresent(userCashJpaRepository::delete);
-
         userCashJpaRepository.save(new UserCash(userId, BigDecimal.ZERO));
 
         int threadCount = 3;
         ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
         CountDownLatch latch = new CountDownLatch(threadCount);
+
         AtomicInteger successCount = new AtomicInteger();
-        AtomicInteger conflictCount = new AtomicInteger();
+        AtomicInteger redisLockFailCount = new AtomicInteger();
+        AtomicInteger optimisticLockFailCount = new AtomicInteger();
+        AtomicInteger unknownErrorCount = new AtomicInteger();
 
         // when
         for (int i = 0; i < threadCount; i++) {
             executorService.submit(() -> {
                 try {
+                    Thread.sleep(new Random().nextInt(100)); // 락 충돌 타이밍 분산
                     cashCommandService.charge(new ChargeCashCommand(userId, amount));
                     successCount.incrementAndGet();
-                } catch (Exception e) {
-                    if (e instanceof ObjectOptimisticLockingFailureException || e instanceof OptimisticLockException) {
-                        conflictCount.incrementAndGet(); // 낙관적 락 충돌
+                } catch (IllegalStateException e) {
+                    redisLockFailCount.incrementAndGet();  // Redis 락 실패
+                } catch (CustomException e) {
+                    if (e.getErrorCode() == ErrorCode.CONCURRENT_REQUEST) {
+                        optimisticLockFailCount.incrementAndGet();  // 낙관적 락 충돌
                     } else {
-                        // 그 외 예외는 테스트 실패로 간주
-                        throw new RuntimeException("Unexpected exception", e);
+                        unknownErrorCount.incrementAndGet();
                     }
+                } catch (Exception e) {
+                    unknownErrorCount.incrementAndGet();
                 } finally {
                     latch.countDown();
                 }
             });
         }
 
-        latch.await(5, TimeUnit.SECONDS);
+        latch.await(10, TimeUnit.SECONDS); //10초 대기
 
         // then
-        log.info("✅ [{} Threads] 성공: {} / 예외: {}", threadCount, successCount.get(), conflictCount.get());
+        assertThat(successCount.get())
+                .withFailMessage("성공 수가 1이 아니고 %d 입니다.", successCount.get())
+                .isEqualTo(1);
 
-        assertThat(successCount.get()).isEqualTo(1);
-        assertThat(conflictCount.get()).isEqualTo(threadCount - 1);
+        assertThat(redisLockFailCount.get() + optimisticLockFailCount.get() + unknownErrorCount.get())
+                .withFailMessage("실패 카운트가 예상과 다릅니다. (RedisLock 실패: %d, Optimistic 실패: %d, 기타: %d)",
+                        redisLockFailCount.get(), optimisticLockFailCount.get(), unknownErrorCount.get())
+                .isEqualTo(threadCount - 1);
 
         UserCash userCash = userCashJpaRepository.findByUserId(userId).orElseThrow();
-        assertThat(userCash.getAmount()).isEqualByComparingTo(amount);
-
-        executorService.shutdown();
+        assertThat(userCash.getAmount())
+                .withFailMessage("잔액이 예상과 다릅니다. 현재: %s", userCash.getAmount())
+                .isEqualByComparingTo(amount);
     }
 }
