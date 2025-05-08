@@ -1,19 +1,14 @@
 package kr.hhplus.be.server.support.aop;
 
 import kr.hhplus.be.server.support.lock.RedisLockRepository;
-import kr.hhplus.be.server.support.lock.RedisLockRepositoryImpl;
 import kr.hhplus.be.server.support.lock.RedisSimpleLock;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.mockito.Spy;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
+
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -60,6 +55,22 @@ class RedisSimpleLockAspectTest {
                 .hasMessageContaining("요청하신 작업을 처리할 수 없습니다. (락 획득 실패");
 
         verify(redisLockRepository).acquireLock(anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("Redis 접속 실패 시 예외가 발생한다")
+    void should_throw_exception_when_redis_down() {
+        RedisLockRepository failingRepository = Mockito.mock(RedisLockRepository.class);
+        when(failingRepository.acquireLock(anyString(), anyLong()))
+                .thenThrow(new RuntimeException("Redis 접속 실패"));
+
+        AspectJProxyFactory factory = new AspectJProxyFactory(new TestService());
+        factory.addAspect(new RedisSimpleLockAspect(failingRepository));
+        TestService proxyService = factory.getProxy();
+
+        assertThatThrownBy(proxyService::testMethod)
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Redis 접속 실패");
     }
 
     static class TestService {

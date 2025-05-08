@@ -62,6 +62,19 @@ class RedisSpinLockAspectTest {
     }
 
     @Test
+    @DisplayName("락 획득 시도 중 timeout 발생 시 예외가 발생한다")
+    void should_throw_timeout_exception_when_lock_cannot_be_acquired_in_time() {
+        when(redisLockRepository.acquireLock(anyString(), anyLong())).thenReturn(false);
+
+        assertThatThrownBy(() -> testService.someMethod("value"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Redis 락 획득 실패");
+
+        verify(redisLockRepository, times(3)).acquireLock(anyString(), anyLong());
+        verify(redisLockRepository, never()).releaseLock(anyString());
+    }
+
+    @Test
     @DisplayName("메서드 실행 중 예외 발생 시 락이 해제된다")
     void should_release_lock_even_when_exception_occurs_in_method() {
         when(redisLockRepository.acquireLock(anyString(), anyLong())).thenReturn(true);
