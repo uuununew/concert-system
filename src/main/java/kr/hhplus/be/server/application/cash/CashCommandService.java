@@ -8,10 +8,12 @@ import kr.hhplus.be.server.domain.cash.UserCash;
 import kr.hhplus.be.server.domain.cash.UserCashRepository;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
+import kr.hhplus.be.server.support.lock.RedisSpinLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
 
 @Slf4j
 @Service
@@ -22,6 +24,7 @@ public class CashCommandService {
     private final CashHistoryRepository cashHistoryRepository;
     private final EntityManager entityManager;
 
+    @RedisSpinLock(key = "'cash-lock:' + #command.userId", ttl = 500, retryInterval = 50, retryCount = 5)
     @Transactional
     public void use(UseCashCommand command) {
         try{
@@ -40,29 +43,27 @@ public class CashCommandService {
 
     }
 
+    @RedisSpinLock(key = "'cash-lock:' + #command.userId", ttl = 500, retryInterval = 50, retryCount = 5)
     @Transactional
     public void charge(ChargeCashCommand command) {
-        int attempts = 0;
-        while (attempts < 3) {
-            try {
-                UserCash userCash = userCashRepository.findByUserId(command.getUserId())
-                        .orElseGet(() -> new UserCash(command.getUserId(), command.getAmount()));
+        try {
+            UserCash userCash = userCashRepository.findByUserId(command.getUserId())
+                    .orElseGet(() -> new UserCash(command.getUserId(), BigDecimal.ZERO));
 
-                userCash.charge(command.getAmount());
-                userCashRepository.save(userCash);
-                entityManager.flush();
+            userCash.charge(command.getAmount());
 
-                CashHistory history = CashHistory.charge(userCash, command.getAmount());
-                cashHistoryRepository.save(history);
+            // 테스트 환경에서 락이 오래 유지되도록 의도적으로 지연
+            Thread.sleep(2000);
 
-                return;
-            }catch (OptimisticLockException e){
-                attempts++;
-                if (attempts >= 3) {
-                    throw new CustomException(ErrorCode.CONCURRENT_REQUEST, "포인트 충전 중 충돌이 발생했습니다. 잠시 후 다시 시도해주세요.");
-                }
-                log.warn("포인트 충전 중 충돌 발생, 재시도: {}회", attempts);
-            }
+            entityManager.flush();
+            userCashRepository.save(userCash);
+
+            cashHistoryRepository.save(CashHistory.charge(userCash, command.getAmount()));
+        } catch (OptimisticLockException e) {
+            throw new CustomException(ErrorCode.CONCURRENT_REQUEST, "포인트 충전 중 충돌이 발생했습니다.");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "요청 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.");
         }
     }
 }
