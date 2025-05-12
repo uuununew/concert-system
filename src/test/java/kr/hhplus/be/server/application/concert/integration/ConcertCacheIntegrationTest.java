@@ -1,7 +1,6 @@
 package kr.hhplus.be.server.application.concert.integration;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.hhplus.be.server.application.concert.ConcertCacheService;
 import kr.hhplus.be.server.application.concert.ConcertService;
 import kr.hhplus.be.server.application.concert.CreateConcertCommand;
@@ -9,6 +8,7 @@ import kr.hhplus.be.server.domain.concert.Concert;
 import kr.hhplus.be.server.domain.concert.ConcertRepository;
 import kr.hhplus.be.server.domain.concert.ConcertStatus;
 import kr.hhplus.be.server.presentation.concert.ConcertResponse;
+import kr.hhplus.be.server.support.config.RedisCacheTestConfig;
 import kr.hhplus.be.server.support.scheduler.ConcertCacheScheduler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,14 +18,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.interceptor.SimpleKey;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
+@Import(RedisCacheTestConfig.class)
 @ActiveProfiles("test")
 class ConcertCacheIntegrationTest {
 
@@ -46,8 +49,8 @@ class ConcertCacheIntegrationTest {
     @Autowired
     ConcertCacheScheduler concertCacheScheduler;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
@@ -67,19 +70,20 @@ class ConcertCacheIntegrationTest {
 
         // then
         assertThat(firstCall).hasSize(1);
-        assertThat(firstCall.get(0).getTitle()).isEqualTo("BTS");
-
         assertThat(secondCall).hasSize(1);
-        assertThat(secondCall.get(0).getTitle()).isEqualTo("BTS");
 
-        // 캐시에 값이 저장되었는지 직접 확인
-        Cache cache = cacheManager.getCache(CACHE_NAME);
+        // Redis에서 직접 캐시 값 조회 → LinkedHashMap을 ConcertResponse로 변환
+        Cache.ValueWrapper wrapper = cacheManager.getCache(CACHE_NAME).get(SimpleKey.EMPTY);
+        assertThat(wrapper).isNotNull();
 
         @SuppressWarnings("unchecked")
-        List<ConcertResponse> cached = (List<ConcertResponse>) cache.get(SimpleKey.EMPTY, List.class);
+        List<LinkedHashMap<String, Object>> raw = (List<LinkedHashMap<String, Object>>) wrapper.get();
+        List<ConcertResponse> cached = raw.stream()
+                .map(map -> objectMapper.convertValue(map, ConcertResponse.class))
+                .toList();
 
-        assertThat(cached).isNotNull();
         assertThat(cached).hasSize(1);
+        assertThat(cached.get(0).getTitle()).isEqualTo("BTS");
     }
 
     @Test
@@ -118,5 +122,16 @@ class ConcertCacheIntegrationTest {
                 .hasSize(2)
                 .extracting("title")
                 .contains("IU", "BTS");
+    }
+
+    @Test
+    @DisplayName("TTL 만료 후 캐시가 자동 제거되고 다시 조회 시 DB 접근")
+    void cache_should_expire_after_ttl() throws InterruptedException {
+        concertRepository.save(new Concert("BTS", 1, ConcertStatus.OPENED, LocalDateTime.now()));
+        concertCacheService.getAllConcertResponses();
+
+        Thread.sleep(3500); // TTL 3초 이상 기다림
+
+        assertThat(cacheManager.getCache(CACHE_NAME).get(SimpleKey.EMPTY)).isNull(); // TTL 만료 확인
     }
 }

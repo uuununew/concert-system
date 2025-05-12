@@ -14,9 +14,7 @@ public class ConcertCacheService {
 
     private final ConcertRepository concertRepository;
 
-    private static final String CACHE_NAME = "concertAll";
-
-    @Cacheable(value = CACHE_NAME)
+    @Cacheable(value = "concertAll")
     public List<ConcertResponse> getAllConcertResponses() {
         return concertRepository.findAll().stream()
                 .map(ConcertResponse::from)
