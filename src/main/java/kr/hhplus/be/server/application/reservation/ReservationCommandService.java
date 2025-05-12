@@ -4,21 +4,22 @@ import kr.hhplus.be.server.domain.concert.ConcertSeat;
 import kr.hhplus.be.server.domain.concert.ConcertSeatRepository;
 import kr.hhplus.be.server.domain.reservation.Reservation;
 import kr.hhplus.be.server.domain.reservation.ReservationRepository;
-import kr.hhplus.be.server.domain.reservation.ReservationStatus;
 import kr.hhplus.be.server.domain.token.QueueToken;
 import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.domain.token.TokenRepository;
 import kr.hhplus.be.server.domain.user.User;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
+import kr.hhplus.be.server.support.lock.RedisSimpleLock;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+@Slf4j
 @Service
-@Transactional
 @RequiredArgsConstructor
 public class ReservationCommandService {
 
@@ -32,6 +33,8 @@ public class ReservationCommandService {
      * - 해당 좌석에 이미 예약이 있는지 확인
      * - 없다면 예약 생성 후 저장
      */
+    @Transactional
+    @RedisSimpleLock(key = "'seat:' + #command.concertSeatId()")
     public Reservation reserve(CreateReservationCommand command) {
         // 1: 토큰 검증 및 활성화
         try {
@@ -41,7 +44,6 @@ public class ReservationCommandService {
         } catch (IllegalArgumentException e) {
             throw new CustomException(ErrorCode.NOT_FOUND, "토큰 정보가 없습니다.");
         }
-
         // 2: concertSeat 객체 조회
         ConcertSeat seat = concertSeatRepository.findByIdWithOptimistic(command.concertSeatId())
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 좌석 정보를 찾을 수 없습니다."));
@@ -52,7 +54,6 @@ public class ReservationCommandService {
         // 4 : 예약 생성
         User user = User.from(command.userId());
         Reservation reservation = Reservation.create(user, seat, command.price());
-
 
         // 5: 예약 저장 및 충돌 처리
         try {
@@ -67,6 +68,7 @@ public class ReservationCommandService {
     /**
      * 예약 취소 처리
      */
+    @Transactional
     public Reservation cancel(Long reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "예약 정보를 찾을 수 없습니다."));
@@ -75,10 +77,8 @@ public class ReservationCommandService {
         try {
             tokenCommandService.restore(reservation.getUserId());
         } catch (Exception e) {
-            // 복구 실패해도 예약 취소는 문제없이 진행되어야 하므로 로깅 처리만
-            System.out.println("토큰 복구 실패: " + e.getMessage());
+            log.info("토큰 복구 실패: {}", e.getMessage());
         }
-
         // 2: 예약 취소 및 저장
         return reservationRepository.save(reservation.cancel());
     }
