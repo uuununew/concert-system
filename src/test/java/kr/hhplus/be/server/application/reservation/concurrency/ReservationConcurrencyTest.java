@@ -1,38 +1,30 @@
 package kr.hhplus.be.server.application.reservation.concurrency;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityTransaction;
 import kr.hhplus.be.server.application.concert.ConcertService;
 import kr.hhplus.be.server.application.concert.CreateConcertCommand;
 import kr.hhplus.be.server.application.reservation.CreateReservationCommand;
 import kr.hhplus.be.server.application.reservation.ReservationCommandService;
 import kr.hhplus.be.server.domain.concert.*;
+import kr.hhplus.be.server.domain.reservation.Reservation;
 import kr.hhplus.be.server.domain.token.QueueToken;
 import kr.hhplus.be.server.domain.token.TokenRepository;
 import kr.hhplus.be.server.support.config.RedisTestContainerConfig;
 import kr.hhplus.be.server.support.exception.CustomException;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 

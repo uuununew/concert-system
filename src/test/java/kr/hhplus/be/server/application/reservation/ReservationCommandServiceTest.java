@@ -7,7 +7,9 @@ import kr.hhplus.be.server.domain.concert.*;
 import kr.hhplus.be.server.domain.reservation.Reservation;
 import kr.hhplus.be.server.domain.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.reservation.ReservationStatus;
+import kr.hhplus.be.server.domain.token.QueueToken;
 import kr.hhplus.be.server.domain.token.TokenRepository;
+import kr.hhplus.be.server.domain.token.TokenStatus;
 import kr.hhplus.be.server.support.exception.CustomException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.junit.jupiter.api.Test;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -53,11 +56,15 @@ public class ReservationCommandServiceTest {
         );
     }
 
-
     @Test
     @DisplayName("예약을 정상적으로 등록한다")
     void reserve_success() {
         // given
+        QueueToken token = new QueueToken(1L, LocalDateTime.now());
+        token.activate();
+
+        when(tokenCommandService.status(1L)).thenReturn(Optional.of(token));
+
         CreateReservationCommand command = new CreateReservationCommand(1L, 2L, BigDecimal.valueOf(10000));
         Concert concert = new Concert("테스트 콘서트", 1, ConcertStatus.READY, LocalDateTime.now());
 
@@ -75,25 +82,33 @@ public class ReservationCommandServiceTest {
         assertThat(result.getConcertSeat().getId()).isEqualTo(2L);
         assertThat(result.getStatus()).isEqualTo(ReservationStatus.RESERVED);
         verify(reservationRepository).save(any());
+        verify(tokenCommandService).complete(1L);
     }
 
     @Test
     @DisplayName("이미 예약된 좌석이면 예외 발생")
     void reserve_fail_when_already_reserved() {
         // given
+        QueueToken token = new QueueToken(1L, LocalDateTime.now());
+        token.activate();
+
+        when(tokenCommandService.status(1L)).thenReturn(Optional.of(token));
+
         CreateReservationCommand command = new CreateReservationCommand(1L, 2L, BigDecimal.valueOf(10000));
         Concert concert = new Concert("테스트 콘서트", 1, ConcertStatus.READY, LocalDateTime.now());
         ConcertSeat seat = ConcertSeat.withAll(
                 2L, concert, "A1", "1층", "A", "VIP",
-                BigDecimal.valueOf(10000), SeatStatus.RESERVED, LocalDateTime.now()
+                BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now()
         );
         //when
         when(concertSeatRepository.findByIdWithOptimistic(2L)).thenReturn(Optional.of(seat));
+        when(reservationRepository.save(any())).thenThrow(
+                new org.springframework.orm.ObjectOptimisticLockingFailureException("", new RuntimeException()));
 
         // then
         assertThatThrownBy(() -> reservationCommandService.reserve(command))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("예약할 수 없는 좌석입니다.");
+                .hasMessageContaining("이미 예약된 좌석입니다");
     }
 
     @Test

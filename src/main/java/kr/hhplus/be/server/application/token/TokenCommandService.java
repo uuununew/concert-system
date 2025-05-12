@@ -63,8 +63,13 @@ public class TokenCommandService {
         QueueToken token = tokenRepository.findByUserId(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다."));
 
+        if (token.getStatus() == TokenStatus.ACTIVE) {
+            return; // 이미 ACTIVE면 추가 로직 없이 통과
+        }
+
         if (token.isExpired(LocalDateTime.now(clock), expireMinutes)) {
             token.expire();
+            tokenRepository.save(token);
             throw new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다.");
         }
 
@@ -82,12 +87,14 @@ public class TokenCommandService {
         QueueToken token = tokenRepository.findByUserId(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다."));
         token.expire();
+        tokenRepository.save(token);
     }
 
     public void restore(Long userId) {
         QueueToken token = tokenRepository.findByUserId(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다."));
         token.restore();
+        tokenRepository.save(token);
     }
 
     /**

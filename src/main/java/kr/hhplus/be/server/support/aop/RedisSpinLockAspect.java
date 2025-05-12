@@ -14,12 +14,14 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.ExpressionParser;
+import org.springframework.expression.EvaluationException;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
-import java.util.UUID;
+
 import java.lang.reflect.Method;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Aspect
@@ -45,7 +47,6 @@ public class RedisSpinLockAspect {
 
         Optional<String> lockValueOptional = Optional.empty();
 
-
         for (int i = 0; i < retryCount; i++) {
             lockValueOptional = redisLockRepository.acquireLock(key, ttl);
             if (lockValueOptional.isPresent()) {
@@ -59,6 +60,7 @@ public class RedisSpinLockAspect {
             log.warn("[RedisSpinLockAspect] Redis 락 획득 실패 - key: {}", key);
             throw new CustomException(ErrorCode.CONCURRENT_REQUEST);
         }
+
         String lockValue = lockValueOptional.get();
 
         try {
@@ -85,7 +87,7 @@ public class RedisSpinLockAspect {
             String parsedKey = parser.parseExpression(keyExpression).getValue(context, String.class);
             if (parsedKey == null) throw new RuntimeException();
             return parsedKey;
-        } catch (Exception e) {
+        } catch (EvaluationException e) {
             String fallback = "fallback-" + UUID.randomUUID();
             log.warn("[RedisSpinLockAspect] SpEL 평가 실패, fallback key 사용됨: {}", keyExpression);
             return fallback;

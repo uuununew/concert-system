@@ -7,6 +7,7 @@ import kr.hhplus.be.server.domain.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.token.QueueToken;
 import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.domain.token.TokenRepository;
+import kr.hhplus.be.server.domain.token.TokenStatus;
 import kr.hhplus.be.server.domain.user.User;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
@@ -37,12 +38,12 @@ public class ReservationCommandService {
     @RedisSimpleLock(key = "'seat:' + #command.concertSeatId()")
     public Reservation reserve(CreateReservationCommand command) {
         // 1: 토큰 검증 및 활성화
-        try {
-            tokenCommandService.activate(command.userId());
-        } catch (IllegalStateException e) {
-            throw new CustomException(ErrorCode.INVALID_REQUEST, "유효하지 않은 토큰입니다: " + e.getMessage());
-        } catch (IllegalArgumentException e) {
-            throw new CustomException(ErrorCode.NOT_FOUND, "토큰 정보가 없습니다.");
+        QueueToken token = tokenCommandService.status(command.userId())
+                .orElseThrow(() -> new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다."));
+
+        if (token.getStatus() != TokenStatus.ACTIVE) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST, "아직 대기열이 활성화되지 않았습니다.");
+        }
         }
         // 2: concertSeat 객체 조회
         ConcertSeat seat = concertSeatRepository.findByIdWithOptimistic(command.concertSeatId())

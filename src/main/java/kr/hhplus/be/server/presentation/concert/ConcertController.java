@@ -1,11 +1,11 @@
 package kr.hhplus.be.server.presentation.concert;
 
 import jakarta.validation.Valid;
+import kr.hhplus.be.server.application.concert.ConcertCacheService;
 import kr.hhplus.be.server.application.concert.ConcertService;
-import kr.hhplus.be.server.application.concert.CreateConcertCommand;
 import kr.hhplus.be.server.domain.concert.Concert;
-import kr.hhplus.be.server.presentation.concert.CreateConcertRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +16,7 @@ import java.util.List;
 public class ConcertController {
 
     private final ConcertService concertService;
+    private final ConcertCacheService concertCacheService;
 
     /**
      * [POST] /concerts
@@ -23,8 +24,7 @@ public class ConcertController {
      */
     @PostMapping
     public ConcertResponse registerConcert(@RequestBody @Valid CreateConcertRequest request) {
-        CreateConcertCommand command = request.toCommand();
-        Concert concert = concertService.registerConcert(command);
+        Concert concert = concertService.registerConcert(request.toCommand());
         return ConcertResponse.from(concert);
     }
 
@@ -43,12 +43,14 @@ public class ConcertController {
     /**
      * 공연 전체 목록을 조회
      * GET /concerts
+     * -> Redis 캐시가 적용된 ConcertCacheService에서 페이징 기반으로 조회
      */
     @GetMapping
-    public List<ConcertResponse> findAllConcerts() {
-        return concertService.getConcertList().stream()
-                .map(ConcertResponse::from)
-                .toList();
+    public List<ConcertResponse> findAllConcerts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return concertCacheService.getPagedConcertResponses(PageRequest.of(page, size));
     }
 
     /**
@@ -60,7 +62,4 @@ public class ConcertController {
         Concert concert = concertService.getConcertById(concertId);
         return ConcertResponse.from(concert);
     }
-
-
-
 }

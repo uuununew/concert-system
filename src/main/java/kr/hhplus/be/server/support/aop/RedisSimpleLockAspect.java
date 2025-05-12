@@ -1,7 +1,9 @@
 package kr.hhplus.be.server.support.aop;
 
 import kr.hhplus.be.server.support.exception.CustomException;
+import kr.hhplus.be.server.support.exception.ErrorCode;
 import kr.hhplus.be.server.support.lock.RedisLockRepository;
+import kr.hhplus.be.server.support.lock.RedisSimpleLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -12,17 +14,15 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.Order;
 import org.springframework.expression.EvaluationContext;
-import org.springframework.expression.EvaluationException;
 import org.springframework.expression.ExpressionParser;
+import org.springframework.expression.EvaluationException;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
-import kr.hhplus.be.server.support.lock.RedisSimpleLock;
-import kr.hhplus.be.server.support.exception.ErrorCode;
-import java.util.UUID;
+
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Aspect
@@ -53,7 +53,6 @@ public class RedisSimpleLockAspect {
         long ttl = redisSimpleLock.ttl();
 
         Optional<String> lockValueOptional = redisLockRepository.acquireLock(key, ttl);
-
         if (lockValueOptional.isEmpty()) {
             throw new CustomException(ErrorCode.CONCURRENT_REQUEST);
         }
@@ -71,8 +70,8 @@ public class RedisSimpleLockAspect {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         String[] paramNames = signature.getParameterNames();
         Object[] args = joinPoint.getArgs();
-        EvaluationContext context = new StandardEvaluationContext();
 
+        EvaluationContext context = new StandardEvaluationContext();
         for (int i = 0; i < paramNames.length; i++) {
             context.setVariable(paramNames[i], args[i]);
         }
@@ -84,7 +83,7 @@ public class RedisSimpleLockAspect {
                 return "fallback-" + UUID.randomUUID();
             }
             return parsedKey;
-        }catch (EvaluationException e) {
+        } catch (EvaluationException e) {
             log.warn("SpEL 파싱 실패, fallback key 사용됨: {}", keyExpression);
             return "fallback-" + UUID.randomUUID();
         }

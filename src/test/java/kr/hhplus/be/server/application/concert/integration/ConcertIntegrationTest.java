@@ -5,12 +5,17 @@ import kr.hhplus.be.server.application.concert.CreateConcertCommand;
 import kr.hhplus.be.server.config.TestContainerConfig;
 import kr.hhplus.be.server.domain.concert.Concert;
 import kr.hhplus.be.server.domain.concert.ConcertStatus;
+import kr.hhplus.be.server.support.config.RedisTestContainerConfig;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -23,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @SpringBootTest
 @Transactional
 @Testcontainers
+@Import(RedisTestContainerConfig.class)
 public class ConcertIntegrationTest extends TestContainerConfig {
 
     @Autowired
@@ -67,11 +73,13 @@ public class ConcertIntegrationTest extends TestContainerConfig {
         concertService.registerConcert(new CreateConcertCommand("BTS1", 1, ConcertStatus.READY, LocalDateTime.now().plusDays(1)));
         concertService.registerConcert(new CreateConcertCommand("BTS2", 2, ConcertStatus.READY, LocalDateTime.now().plusDays(2)));
 
+        Pageable pageable = PageRequest.of(0, 10);
+
         // when
-        List<Concert> concerts = concertService.getConcertList();
+        Page<Concert> concertsPage = concertService.getConcertList(pageable);
 
         // then
-        assertThat(concerts).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(concertsPage.getContent()).hasSizeGreaterThanOrEqualTo(2);
     }
 
     @Test
