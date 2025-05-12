@@ -1,7 +1,9 @@
 package kr.hhplus.be.server.support.lock;
 
+import java.util.Optional;
+
 public interface RedisLockRepository {
 
-    boolean acquireLock(String key, long ttl);
-    void releaseLock(String key);
+    Optional<String> acquireLock(String key, long ttl);
+    void releaseLock(String key, String value);
 }

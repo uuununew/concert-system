@@ -44,6 +44,7 @@ public class ReservationCommandService {
         if (token.getStatus() != TokenStatus.ACTIVE) {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "아직 대기열이 활성화되지 않았습니다.");
         }
+        }
         // 2: concertSeat 객체 조회
         ConcertSeat seat = concertSeatRepository.findByIdWithOptimistic(command.concertSeatId())
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 좌석 정보를 찾을 수 없습니다."));

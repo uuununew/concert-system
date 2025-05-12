@@ -1,6 +1,9 @@
 package kr.hhplus.be.server.support.aop;
 
+import kr.hhplus.be.server.support.exception.CustomException;
+import kr.hhplus.be.server.support.exception.ErrorCode;
 import kr.hhplus.be.server.support.lock.RedisLockRepository;
+import kr.hhplus.be.server.support.lock.RedisSimpleLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -12,12 +15,14 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.Order;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.ExpressionParser;
+import org.springframework.expression.EvaluationException;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
-import kr.hhplus.be.server.support.lock.RedisSimpleLock;
 
 import java.lang.reflect.Method;
+import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Aspect
@@ -31,9 +36,9 @@ public class RedisSimpleLockAspect {
 
     @Around("execution(@kr.hhplus.be.server.support.lock.RedisSimpleLock * *(..))")
     public Object applySimpleLock(ProceedingJoinPoint joinPoint) throws Throwable {
-
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
+
         RedisSimpleLock redisSimpleLock = AnnotationUtils.findAnnotation(method, RedisSimpleLock.class);
         if (redisSimpleLock == null) {
             Method targetMethod = joinPoint.getTarget().getClass().getMethod(method.getName(), method.getParameterTypes());
@@ -47,14 +52,17 @@ public class RedisSimpleLockAspect {
         String key = parseKey(joinPoint, redisSimpleLock.key());
         long ttl = redisSimpleLock.ttl();
 
-        boolean acquired = redisLockRepository.acquireLock(key, ttl);
-        if (!acquired) {
-            throw new RuntimeException("요청하신 작업을 처리할 수 없습니다. (락 획득 실패, key: " + key + ")");
+        Optional<String> lockValueOptional = redisLockRepository.acquireLock(key, ttl);
+        if (lockValueOptional.isEmpty()) {
+            throw new CustomException(ErrorCode.CONCURRENT_REQUEST);
         }
+
+        String lockValue = lockValueOptional.get();
+
         try {
             return joinPoint.proceed();
         } finally {
-            redisLockRepository.releaseLock(key);
+            redisLockRepository.releaseLock(key, lockValue);
         }
     }
 
@@ -68,10 +76,16 @@ public class RedisSimpleLockAspect {
             context.setVariable(paramNames[i], args[i]);
         }
 
-        String parsedKey = parser.parseExpression(keyExpression).getValue(context, String.class);
-        if (parsedKey == null) {
-            throw new IllegalStateException("SpEL key expression 평가 결과가 null입니다: " + keyExpression);
+        try {
+            String parsedKey = parser.parseExpression(keyExpression).getValue(context, String.class);
+            if (parsedKey == null) {
+                log.warn("SpEL 평가 결과가 null, fallback key 사용됨: {}", keyExpression);
+                return "fallback-" + UUID.randomUUID();
+            }
+            return parsedKey;
+        } catch (EvaluationException e) {
+            log.warn("SpEL 파싱 실패, fallback key 사용됨: {}", keyExpression);
+            return "fallback-" + UUID.randomUUID();
         }
-        return parsedKey;
     }
 }
