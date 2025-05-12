@@ -1,5 +1,7 @@
 package kr.hhplus.be.server.support.aop;
 
+import kr.hhplus.be.server.support.exception.CustomException;
+import kr.hhplus.be.server.support.exception.ErrorCode;
 import kr.hhplus.be.server.support.lock.RedisLockRepository;
 import kr.hhplus.be.server.support.lock.RedisSpinLock;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,13 +56,23 @@ class RedisSpinLockAspectTest {
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> testService.someMethod("value"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Redis 락 획득 실패");
+                .isInstanceOf(CustomException.class)
+                .hasMessage(ErrorCode.CONCURRENT_REQUEST.getMessage());
 
         // 실제 구현에서는 retryCount 횟수만큼 시도합니다
-        // 단일 시도를 사용하는 경우 times(1)로 변경하세요
+        // 단일 시도를 사용하는 경우 times(1)로 변경
         verify(redisLockRepository, times(3)).acquireLock(anyString(), anyLong());
         verify(redisLockRepository, never()).releaseLock(any(), any());
+    }
+
+    @Test
+    @DisplayName("SpEL 파싱 실패 시 fallback key로 처리되고 정상 실행된다")
+    void should_fallback_when_spel_key_is_invalid() {
+        String result = testService.methodWithInvalidSpel("ignored");
+
+        verify(redisLockRepository).acquireLock(startsWith("fallback-"), anyLong());
+        verify(redisLockRepository).releaseLock(anyString(), anyString());
+        assertThat(result).isEqualTo("success");
     }
 
     @Test
@@ -70,8 +82,11 @@ class RedisSpinLockAspectTest {
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> testService.someMethod("value"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Redis 락 획득 실패");
+                .isInstanceOf(CustomException.class)
+                .satisfies(e -> {
+                    CustomException ce = (CustomException) e;
+                    assertThat(ce.getErrorCode()).isEqualTo(ErrorCode.CONCURRENT_REQUEST);
+                });
 
         verify(redisLockRepository, times(3)).acquireLock(anyString(), anyLong());
         verify(redisLockRepository, never()).releaseLock(any(), any());
@@ -100,6 +115,11 @@ class RedisSpinLockAspectTest {
         @RedisSpinLock(key = "#param", ttl = 1000, retryInterval = 100, retryCount = 3)
         public String exceptionMethod(String param) {
             throw new RuntimeException("예외 발생");
+        }
+
+        @RedisSpinLock(key = "#invalidParam", ttl = 1000, retryInterval = 100, retryCount = 3)
+        public String methodWithInvalidSpel(String param) {
+            return "success";
         }
     }
 }

@@ -1,5 +1,7 @@
 package kr.hhplus.be.server.support.aop;
 
+import kr.hhplus.be.server.support.exception.CustomException;
+import kr.hhplus.be.server.support.exception.ErrorCode;
 import kr.hhplus.be.server.support.lock.RedisLockRepository;
 import kr.hhplus.be.server.support.lock.RedisSpinLock;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +17,7 @@ import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
-
+import java.util.UUID;
 import java.lang.reflect.Method;
 import java.util.Optional;
 
@@ -54,7 +56,8 @@ public class RedisSpinLockAspect {
         }
 
         if (lockValueOptional.isEmpty()) {
-            throw new IllegalStateException("Redis 락 획득 실패: " + key);
+            log.warn("[RedisSpinLockAspect] Redis 락 획득 실패 - key: {}", key);
+            throw new CustomException(ErrorCode.CONCURRENT_REQUEST);
         }
         String lockValue = lockValueOptional.get();
 
@@ -78,10 +81,14 @@ public class RedisSpinLockAspect {
             context.setVariable(paramNames[i], args[i]);
         }
 
-        String parsedKey = parser.parseExpression(keyExpression).getValue(context, String.class);
-        if (parsedKey == null) {
-            throw new IllegalStateException("SpEL key expression이 null입니다: " + keyExpression);
+        try {
+            String parsedKey = parser.parseExpression(keyExpression).getValue(context, String.class);
+            if (parsedKey == null) throw new RuntimeException();
+            return parsedKey;
+        } catch (Exception e) {
+            String fallback = "fallback-" + UUID.randomUUID();
+            log.warn("[RedisSpinLockAspect] SpEL 평가 실패, fallback key 사용됨: {}", keyExpression);
+            return fallback;
         }
-        return parsedKey;
     }
 }
