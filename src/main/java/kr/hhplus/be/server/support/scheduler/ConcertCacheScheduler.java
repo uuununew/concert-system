@@ -13,6 +13,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+import static kr.hhplus.be.server.support.cache.CacheConstants.CONCERT_ALL_CACHE;
+import static kr.hhplus.be.server.support.cache.CacheConstants.CONCERT_ALL_KEY;
+
 /**
  * 콘서트 캐시를 주기적으로 갱신하는 스케줄러
  */
@@ -21,7 +24,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ConcertCacheScheduler {
 
-    private static final String CACHE_NAME = "concertAll";
     private final ConcertCacheService concertCacheService;
     private final CacheManager cacheManager;
 
@@ -33,13 +35,13 @@ public class ConcertCacheScheduler {
         log.info("[ConcertCacheScheduler] 콘서트 캐시 갱신 시작");
 
         List<ConcertResponse> latestConcerts = concertCacheService.getAllConcertResponses();
-        Cache cache = cacheManager.getCache(CACHE_NAME);
+        Cache cache = cacheManager.getCache(CONCERT_ALL_CACHE);
 
         if (cache != null) {
-            cache.put(CACHE_NAME, latestConcerts);
+            cache.put(CONCERT_ALL_KEY, latestConcerts);
             log.info("[ConcertCacheScheduler] 콘서트 캐시 갱신 완료 - {}건", latestConcerts.size());
         } else {
-            log.warn("[ConcertCacheScheduler] 캐시 객체를 찾을 수 없습니다: {}", CACHE_NAME);
+            log.warn("[ConcertCacheScheduler] 캐시 객체를 찾을 수 없습니다: {}", CONCERT_ALL_CACHE);
             throw new CustomException(ErrorCode.CACHE_NOT_FOUND, "공연 목록 데이터를 저장할 캐시 공간을 찾을 수 없습니다.");
         }
     }

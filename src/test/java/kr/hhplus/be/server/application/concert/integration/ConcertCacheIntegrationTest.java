@@ -8,6 +8,7 @@ import kr.hhplus.be.server.domain.concert.Concert;
 import kr.hhplus.be.server.domain.concert.ConcertRepository;
 import kr.hhplus.be.server.domain.concert.ConcertStatus;
 import kr.hhplus.be.server.presentation.concert.ConcertResponse;
+import kr.hhplus.be.server.support.cache.CacheConstants;
 import kr.hhplus.be.server.support.config.RedisCacheTestConfig;
 import kr.hhplus.be.server.support.scheduler.ConcertCacheScheduler;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +55,7 @@ class ConcertCacheIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        cacheManager.getCache(CACHE_NAME).clear();
+        cacheManager.getCache(CacheConstants.CONCERT_ALL_CACHE).clear();
         concertRepository.deleteAll();
     }
 
@@ -73,7 +74,7 @@ class ConcertCacheIntegrationTest {
         assertThat(secondCall).hasSize(1);
 
         // Redis에서 직접 캐시 값 조회 → LinkedHashMap을 ConcertResponse로 변환
-        Cache.ValueWrapper wrapper = cacheManager.getCache(CACHE_NAME).get(SimpleKey.EMPTY);
+        Cache.ValueWrapper wrapper = cacheManager.getCache(CacheConstants.CONCERT_ALL_CACHE).get("all");
         assertThat(wrapper).isNotNull();
 
         @SuppressWarnings("unchecked")
@@ -93,13 +94,13 @@ class ConcertCacheIntegrationTest {
         concertRepository.save(new Concert("BTS", 1, ConcertStatus.OPENED, LocalDateTime.now().plusDays(1)));
         concertCacheService.getAllConcertResponses();
 
-        assertThat(cacheManager.getCache(CACHE_NAME).get(SimpleKey.EMPTY)).isNotNull();
+        assertThat(cacheManager.getCache(CacheConstants.CONCERT_ALL_CACHE).get("all")).isNotNull();
 
         // when
         concertService.registerConcert(new CreateConcertCommand("IU", 1, ConcertStatus.OPENED, LocalDateTime.now().plusDays(1)));
 
         // then
-        assertThat(cacheManager.getCache(CACHE_NAME).get(SimpleKey.EMPTY)).isNull();
+        assertThat(cacheManager.getCache(CacheConstants.CONCERT_ALL_CACHE).get(SimpleKey.EMPTY)).isNull();
     }
 
     @Test
@@ -132,6 +133,6 @@ class ConcertCacheIntegrationTest {
 
         Thread.sleep(3500); // TTL 3초 이상 기다림
 
-        assertThat(cacheManager.getCache(CACHE_NAME).get(SimpleKey.EMPTY)).isNull(); // TTL 만료 확인
+        assertThat(cacheManager.getCache(CacheConstants.CONCERT_ALL_CACHE).get(SimpleKey.EMPTY)).isNull(); // TTL 만료 확인
     }
 }

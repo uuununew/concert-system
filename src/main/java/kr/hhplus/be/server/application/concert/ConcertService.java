@@ -14,19 +14,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static kr.hhplus.be.server.support.cache.CacheConstants.CONCERT_ALL_CACHE;
+import static kr.hhplus.be.server.support.cache.CacheConstants.CONCERT_ALL_KEY;
+
 @Service
 @RequiredArgsConstructor
 public class ConcertService {
 
     private final ConcertRepository concertRepository;
 
-    private static final String CACHE_NAME = "concertAll";
-
     /**
      * 콘서트 등록
      */
     @Transactional
-    @CacheEvict(value = CACHE_NAME, allEntries = true)
+    @CacheEvict(value = CONCERT_ALL_CACHE, key = CONCERT_ALL_KEY)
     public Concert registerConcert(CreateConcertCommand command) {
         Concert concert = new Concert(
                 command.title(),
@@ -41,7 +42,7 @@ public class ConcertService {
      * 콘서트 상태 변경
      */
     @Transactional
-    @CacheEvict(value = CACHE_NAME, allEntries = true)
+    @CacheEvict(value = CONCERT_ALL_CACHE, key = CONCERT_ALL_KEY)
     public void changeConcertStatus(Long concertId, ConcertStatus newStatus) {
         Concert concert = concertRepository.findById(concertId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 ID의 콘서트를 찾을 수 없습니다."));
@@ -59,7 +60,7 @@ public class ConcertService {
      * 콘서트 삭제
      */
     @Transactional
-    @CacheEvict(value = CACHE_NAME, allEntries = true)
+    @CacheEvict(value = CONCERT_ALL_CACHE, key = CONCERT_ALL_KEY)
     public void deleteConcert(Long concertId) {
         if (!concertRepository.existsById(concertId)) {
             throw new CustomException(ErrorCode.NOT_FOUND, "해당 ID의 콘서트를 찾을 수 없습니다.");
