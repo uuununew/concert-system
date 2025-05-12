@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.application.payment.integration;
 
+import jakarta.persistence.EntityManager;
 import kr.hhplus.be.server.application.cash.CashService;
 import kr.hhplus.be.server.application.cash.ChargeCashCommand;
 import kr.hhplus.be.server.application.payment.CreatePaymentCommand;
@@ -7,6 +8,7 @@ import kr.hhplus.be.server.application.payment.PaymentCommandService;
 import kr.hhplus.be.server.application.payment.PaymentQueryService;
 import kr.hhplus.be.server.application.reservation.CreateReservationCommand;
 import kr.hhplus.be.server.application.reservation.ReservationCommandService;
+import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.config.TestContainerConfig;
 import kr.hhplus.be.server.domain.concert.*;
 import kr.hhplus.be.server.domain.payment.Payment;
@@ -59,6 +61,12 @@ public class PaymentIntegrationTest extends TestContainerConfig {
     @Autowired
     private CashService cashService;
 
+    @Autowired
+    private TokenCommandService tokenCommandService;
+
+    @Autowired
+    private EntityManager entityManager;
+
     private Reservation createReservation() {
         Concert concert = concertRepository.save(
                 Concert.create("Test Concert", 1, ConcertStatus.READY, LocalDateTime.now().plusDays(1)));
@@ -66,7 +74,10 @@ public class PaymentIntegrationTest extends TestContainerConfig {
         ConcertSeat seat = concertSeatRepository.save(
                 ConcertSeat.of(concert, "A1", "1층", "A", "VIP", BigDecimal.valueOf(10000)));
 
-        tokenRepository.save(new QueueToken(1L, LocalDateTime.now()));
+        QueueToken token = new QueueToken(1L, LocalDateTime.now());
+        token.activate(); // 상태를 WAITING -> ACTIVE 로 전환
+        tokenRepository.save(token);
+
         cashService.charge(new ChargeCashCommand(1L, BigDecimal.valueOf(100000)));
 
         return reservationCommandService.reserve(
@@ -102,9 +113,23 @@ public class PaymentIntegrationTest extends TestContainerConfig {
         ConcertSeat seat2 = concertSeatRepository.save(
                 ConcertSeat.of(concert, "B2", "1층", "B", "R", BigDecimal.valueOf(10000)));
 
-        // 유저 1, 유저 2 각각 대기열 발급 및 캐시 충전
-        tokenRepository.save(new QueueToken(1L, LocalDateTime.now()));
-        tokenRepository.save(new QueueToken(2L, LocalDateTime.now()));
+        // 유저 1, 유저 2 각각 대기열 발급
+        QueueToken token1 = new QueueToken(1L, LocalDateTime.now());
+        token1.activate();
+        tokenRepository.save(token1);
+
+        QueueToken token2 = new QueueToken(2L, LocalDateTime.now());
+        token2.activate();
+        tokenRepository.save(token2);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // 토큰 활성화
+        tokenCommandService.activate(1L);
+        tokenCommandService.activate(2L);
+
+        // 캐시 충전
         cashService.charge(new ChargeCashCommand(1L, BigDecimal.valueOf(100000)));
         cashService.charge(new ChargeCashCommand(2L, BigDecimal.valueOf(100000)));
 

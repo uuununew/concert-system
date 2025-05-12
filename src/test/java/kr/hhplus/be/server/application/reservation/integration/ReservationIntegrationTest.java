@@ -55,8 +55,9 @@ public class ReservationIntegrationTest extends TestContainerConfig {
                 ConcertSeat.of(concert, "A1", "1층", "A", "VIP", BigDecimal.valueOf(10000)));
         concertSeatId = seat.getId();
 
-        // 토큰 발급
-        tokenRepository.save(new QueueToken(1L, LocalDateTime.now()));
+        QueueToken token = new QueueToken(1L, LocalDateTime.now());
+        token.activate(); // 대기열 상태를 ACTIVE로 변경
+        tokenRepository.save(token); // 활성화된 토큰 저장
     }
 
     @Test

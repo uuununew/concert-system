@@ -79,7 +79,7 @@ public class ReservationConcurrencyTest{
             LocalDateTime issuedAt = now.minusSeconds(100 + (10 - userId));  // userId=1이 가장 오래됨
             QueueToken token = new QueueToken(userId, issuedAt);
             if (userId == 1) token.activate();
-            tokenRepository.save(new QueueToken(userId, issuedAt));
+            tokenRepository.save(token);
         }
 
         // given : 테스트용 좌석에 대해 동시에 예약을 시도할 유저 수 설정
