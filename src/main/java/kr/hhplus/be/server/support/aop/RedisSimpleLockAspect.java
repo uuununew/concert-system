@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.support.aop;
 
+import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.lock.RedisLockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,8 +17,10 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 import kr.hhplus.be.server.support.lock.RedisSimpleLock;
+import kr.hhplus.be.server.support.exception.ErrorCode;
 
 import java.lang.reflect.Method;
+import java.util.Optional;
 
 @Slf4j
 @Aspect
@@ -47,14 +50,18 @@ public class RedisSimpleLockAspect {
         String key = parseKey(joinPoint, redisSimpleLock.key());
         long ttl = redisSimpleLock.ttl();
 
-        boolean acquired = redisLockRepository.acquireLock(key, ttl);
-        if (!acquired) {
-            throw new RuntimeException("요청하신 작업을 처리할 수 없습니다. (락 획득 실패, key: " + key + ")");
+        Optional<String> lockValueOptional = redisLockRepository.acquireLock(key, ttl);
+
+        if (lockValueOptional.isEmpty()) {
+            throw new CustomException(ErrorCode.CONCURRENT_REQUEST, "락 획득 실패: " + key);
         }
+
+        String lockValue = lockValueOptional.get();
+
         try {
             return joinPoint.proceed();
         } finally {
-            redisLockRepository.releaseLock(key);
+            redisLockRepository.releaseLock(key, lockValue);
         }
     }
 

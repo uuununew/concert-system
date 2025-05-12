@@ -10,6 +10,8 @@ import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 
 
+import java.util.Optional;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -26,7 +28,8 @@ class RedisSimpleLockAspectTest {
     @BeforeEach
     void setUp() {
         redisLockRepository = Mockito.mock(RedisLockRepository.class);
-        when(redisLockRepository.acquireLock(anyString(), anyLong())).thenReturn(true);
+        when(redisLockRepository.acquireLock(anyString(), anyLong()))
+                .thenReturn(Optional.of("mock-lock-value"));
 
         TestService targetService = new TestService();
 
@@ -42,13 +45,14 @@ class RedisSimpleLockAspectTest {
         String result = testService.testMethod();
 
         verify(redisLockRepository).acquireLock(anyString(), anyLong());
+        verify(redisLockRepository).releaseLock(anyString(), anyString());
         assertThat(result).isEqualTo("success");
     }
 
     @Test
     @DisplayName("락 획득 실패 시 예외가 발생한다")
     void fail() {
-        when(redisLockRepository.acquireLock(anyString(), anyLong())).thenReturn(false);
+        when(redisLockRepository.acquireLock(anyString(), anyLong())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> testService.testMethod())
                 .isInstanceOf(RuntimeException.class)
