@@ -98,12 +98,29 @@ public class ReservationIntegrationTest extends TestContainerConfig {
         // given
         CreateReservationCommand command = new CreateReservationCommand(
                 1L, concertSeatId, BigDecimal.valueOf(10000));
-        reservationCommandService.reserve(command);
+
+        // 기존 토큰 삭제
+        tokenRepository.findByUserId(1L)
+                .ifPresent(token -> tokenRepository.delete(token.getUserId()));
+
+        // 새 토큰 저장 및 활성화
+        QueueToken token = new QueueToken(1L, LocalDateTime.now().minusSeconds(10));
+        token.activate();
+        tokenRepository.save(token);
+
+        reservationCommandService.reserve(command); // 첫 예약 성공
+
+        // 두 번째 토큰 재등록 (다시 활성화)
+        tokenRepository.findByUserId(1L)
+                .ifPresent(t -> tokenRepository.delete(t.getUserId()));
+        QueueToken secondToken = new QueueToken(1L, LocalDateTime.now().minusSeconds(5));
+        secondToken.activate();
+        tokenRepository.save(secondToken);
 
         // when // then
         assertThatThrownBy(() -> reservationCommandService.reserve(command))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("이미 예약된 좌석입니다");
+                .hasMessageContaining("예약할 수 없는 좌석입니다.");
     }
 
     @Test

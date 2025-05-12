@@ -37,14 +37,14 @@ public class ReservationCommandService {
     @Transactional
     @RedisSimpleLock(key = "'seat:' + #command.concertSeatId()")
     public Reservation reserve(CreateReservationCommand command) {
-        // 1: 토큰 검증 및 활성화
+        // 1. 토큰 유효성 검증 (FIFO + ACTIVE 상태 확인 포함)
         QueueToken token = tokenCommandService.status(command.userId())
                 .orElseThrow(() -> new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다."));
 
         if (token.getStatus() != TokenStatus.ACTIVE) {
             throw new CustomException(ErrorCode.INVALID_REQUEST, "아직 대기열이 활성화되지 않았습니다.");
         }
-        }
+
         // 2: concertSeat 객체 조회
         ConcertSeat seat = concertSeatRepository.findByIdWithOptimistic(command.concertSeatId())
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "해당 좌석 정보를 찾을 수 없습니다."));
