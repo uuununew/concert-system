@@ -17,6 +17,7 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
+import java.util.Optional;
 
 @Slf4j
 @Aspect
@@ -40,31 +41,30 @@ public class RedisSpinLockAspect {
         long retryInterval = redisSpinLock.retryInterval();
         int retryCount = redisSpinLock.retryCount();
 
-        boolean lockAcquired = false;
+        Optional<String> lockValueOptional = Optional.empty();
+
+
+        for (int i = 0; i < retryCount; i++) {
+            lockValueOptional = redisLockRepository.acquireLock(key, ttl);
+            if (lockValueOptional.isPresent()) {
+                log.debug("[RedisSpinLockAspect] Redis 락 획득 성공 - key: {}, value: {}", key, lockValueOptional.get());
+                break;
+            }
+            Thread.sleep(retryInterval);
+        }
+
+        if (lockValueOptional.isEmpty()) {
+            throw new IllegalStateException("Redis 락 획득 실패: " + key);
+        }
+        String lockValue = lockValueOptional.get();
 
         try {
-            for (int i = 0; i < retryCount; i++) {
-                lockAcquired = redisLockRepository.acquireLock(key, ttl);
-                if (lockAcquired) {
-                    log.debug("[RedisSpinLockAspect] Redis 락 획득 성공 - key: {}", key);
-                    break;
-                }
-                Thread.sleep(retryInterval);
-            }
-
-            if (!lockAcquired) {
-                throw new IllegalStateException("Redis 락 획득 실패: " + key);
-            }
             return joinPoint.proceed();
-
         } catch (Throwable t) {
-            log.error("[RedisSpinLockAspect] 예외 발생 - key: {} - {}", key, t.getMessage(), t);
+            log.error("[RedisSpinLockAspect] 예외 발생 - key: {}, value: {}, message: {}", key, lockValue, t.getMessage(), t);
             throw t;
-
         } finally {
-            if (lockAcquired) {
-                redisLockRepository.releaseLock(key);
-            }
+            redisLockRepository.releaseLock(key, lockValue);
         }
     }
 
