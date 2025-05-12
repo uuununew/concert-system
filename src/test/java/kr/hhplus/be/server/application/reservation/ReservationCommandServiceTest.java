@@ -64,8 +64,7 @@ public class ReservationCommandServiceTest {
         ConcertSeat seat = ConcertSeat.withAll(
                 2L, concert, "A1", "1층", "A", "VIP", BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now());
 
-        when(concertSeatRepository.findById(2L)).thenReturn(Optional.of(seat));
-        when(reservationRepository.findByConcertSeatAndStatus(seat, ReservationStatus.RESERVED)).thenReturn(Optional.empty());
+        when(concertSeatRepository.findByIdWithOptimistic(2L)).thenReturn(Optional.of(seat));
         when(reservationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // when
@@ -86,18 +85,15 @@ public class ReservationCommandServiceTest {
         Concert concert = new Concert("테스트 콘서트", 1, ConcertStatus.READY, LocalDateTime.now());
         ConcertSeat seat = ConcertSeat.withAll(
                 2L, concert, "A1", "1층", "A", "VIP",
-                BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now()
+                BigDecimal.valueOf(10000), SeatStatus.RESERVED, LocalDateTime.now()
         );
-
         //when
-        when(concertSeatRepository.findById(2L)).thenReturn(Optional.of(seat));
-        when(reservationRepository.findByConcertSeatAndStatus(seat, ReservationStatus.RESERVED))
-                .thenReturn(Optional.of(mock(Reservation.class)));
+        when(concertSeatRepository.findByIdWithOptimistic(2L)).thenReturn(Optional.of(seat));
 
         // then
         assertThatThrownBy(() -> reservationCommandService.reserve(command))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("이미 예약된 좌석입니다.");
+                .hasMessageContaining("예약할 수 없는 좌석입니다.");
     }
 
     @Test
