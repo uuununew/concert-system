@@ -20,6 +20,7 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.interceptor.SimpleKey;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -134,5 +135,26 @@ class ConcertCacheIntegrationTest {
         Thread.sleep(3500); // TTL 3초 이상 기다림
 
         assertThat(cacheManager.getCache(CacheConstants.CONCERT_ALL_CACHE).get(SimpleKey.EMPTY)).isNull(); // TTL 만료 확인
+    }
+
+    @Test
+    @DisplayName("페이지 파라미터에 따라 캐시 키가 다르게 저장된다")
+    void cache_key_should_differ_by_page_params() {
+        List<Concert> concerts = List.of(
+                new Concert("BTS", 1, ConcertStatus.OPENED, LocalDateTime.now()),
+                new Concert("IU", 1, ConcertStatus.OPENED, LocalDateTime.now())
+        );
+        concerts.forEach(concertRepository::save);
+
+        PageRequest page0 = PageRequest.of(0, 1);
+        PageRequest page1 = PageRequest.of(1, 1);
+
+        concertCacheService.getPagedConcertResponses(page0);
+        concertCacheService.getPagedConcertResponses(page1);
+
+        Cache cache = cacheManager.getCache(CacheConstants.CONCERT_ALL_CACHE);
+
+        assertThat(cache.get("page:0:1")).isNotNull();
+        assertThat(cache.get("page:1:1")).isNotNull();
     }
 }

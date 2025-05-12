@@ -22,6 +22,8 @@ import org.springframework.cache.support.SimpleCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -82,6 +84,7 @@ class ConcertCacheServiceTest {
         // given
         List<Concert> concerts = List.of(new Concert("BTS", 1, null, LocalDateTime.now()));
         when(concertRepository.findAll()).thenReturn(concerts);
+        Pageable pageable = PageRequest.of(0, 10);
 
         // when
         List<ConcertResponse> responses = concertCacheService.getAllConcertResponses();
@@ -98,6 +101,7 @@ class ConcertCacheServiceTest {
         // given
         List<Concert> concerts = List.of(new Concert("IU", 1, null, LocalDateTime.now()));
         when(concertRepository.findAll()).thenReturn(concerts);
+        Pageable pageable = PageRequest.of(0, 10);
 
         // 1차 호출 - 캐시 저장
         concertCacheService.getAllConcertResponses();
@@ -105,6 +109,7 @@ class ConcertCacheServiceTest {
         reset(concertRepository);
 
         // 실제 캐시에서 값 꺼내 확인
+        String key = "page:0:10";
         Cache.ValueWrapper wrapper = cacheManager.getCache(CacheConstants.CONCERT_ALL_CACHE).get("all");
         assertThat(wrapper).isNotNull();
 
