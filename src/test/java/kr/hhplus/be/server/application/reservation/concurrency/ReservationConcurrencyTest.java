@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
@@ -55,9 +56,6 @@ public class ReservationConcurrencyTest{
     @Autowired
     private StringRedisTemplate redisTemplate;
 
-    @Autowired
-    private EntityManager entityManager;
-
     private Long seatId;
 
     @DisplayName("동시에 10명이 같은 좌석을 예약할 경우 1명만 성공하고 나머지는 예외 발생")
@@ -79,7 +77,9 @@ public class ReservationConcurrencyTest{
         LocalDateTime now = LocalDateTime.now();
         for (long userId = 1; userId <= 10; userId++) {
             LocalDateTime issuedAt = now.minusSeconds(100 + (10 - userId));  // userId=1이 가장 오래됨
-            tokenRepository.save(new QueueToken(userId, issuedAt));
+            QueueToken token = new QueueToken(userId, issuedAt);
+            if (userId == 1) token.activate();
+            tokenRepository.save(token);
         }
 
         // given : 테스트용 좌석에 대해 동시에 예약을 시도할 유저 수 설정

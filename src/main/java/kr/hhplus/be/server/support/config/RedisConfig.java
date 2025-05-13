@@ -25,7 +25,6 @@ public class RedisConfig {
 
         RedisSerializer<Object> valueSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
 
-
         RedisTemplate<String, String> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
         template.setKeySerializer(new StringRedisSerializer());

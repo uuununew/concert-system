@@ -59,6 +59,7 @@ public class TokenCommandService {
         return tokenRepository.enqueue(userId, clock);
     }
 
+    @Transactional
     public void activate(Long userId) {
         QueueToken token = tokenRepository.findByUserId(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TOKEN_NOT_FOUND, "토큰 정보가 없습니다."));

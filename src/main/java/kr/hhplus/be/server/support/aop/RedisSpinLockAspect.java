@@ -87,7 +87,7 @@ public class RedisSpinLockAspect {
             String parsedKey = parser.parseExpression(keyExpression).getValue(context, String.class);
             if (parsedKey == null) throw new RuntimeException();
             return parsedKey;
-        } catch (EvaluationException e) {
+        } catch (Exception e) {
             String fallback = "fallback-" + UUID.randomUUID();
             log.warn("[RedisSpinLockAspect] SpEL 평가 실패, fallback key 사용됨: {}", keyExpression);
             return fallback;
