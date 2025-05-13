@@ -122,9 +122,6 @@ public class PaymentIntegrationTest extends TestContainerConfig {
         token2.activate();
         tokenRepository.save(token2);
 
-        entityManager.flush();
-        entityManager.clear();
-
         // 토큰 활성화
         tokenCommandService.activate(1L);
         tokenCommandService.activate(2L);
