@@ -19,16 +19,20 @@ import kr.hhplus.be.server.domain.token.QueueToken;
 import kr.hhplus.be.server.domain.token.TokenRepository;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -50,6 +54,9 @@ public class PaymentIntegrationTest extends TestContainerConfig {
     private ReservationCommandService reservationCommandService;
 
     @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @Autowired
     private ConcertRepository concertRepository;
 
     @Autowired
@@ -66,6 +73,11 @@ public class PaymentIntegrationTest extends TestContainerConfig {
 
     @Autowired
     private EntityManager entityManager;
+
+    @BeforeEach
+    void clearRedis() {
+        redisTemplate.getConnectionFactory().getConnection().flushAll();
+    }
 
     private Reservation createReservation() {
         Concert concert = concertRepository.save(
@@ -204,5 +216,43 @@ public class PaymentIntegrationTest extends TestContainerConfig {
 
         // then
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
+    }
+
+    @Test
+    @DisplayName("매진되면 랭킹 기록이 수행된다")
+    void pay_lastSeat_triggersRankingRecord() {
+        // given
+        Concert concert = concertRepository.save(
+                Concert.create("매진 콘서트", 1, ConcertStatus.READY, LocalDateTime.now().plusMinutes(5))
+        );
+        ConcertSeat seat = concertSeatRepository.save(
+                ConcertSeat.of(concert, "Z9", "3층", "Z", "R", BigDecimal.valueOf(30000))
+        );
+
+        // 좌석 수 1개만 등록한 상태에서 Redis에 좌석 카운트 = 1 로 세팅
+        String remainKey = "concert-seat-remain:" + concert.getId();
+        redisTemplate.opsForValue().set(remainKey, "1");
+
+        QueueToken token = new QueueToken(1L, LocalDateTime.now());
+        token.activate();
+        tokenRepository.save(token);
+
+        cashService.charge(new ChargeCashCommand(1L, BigDecimal.valueOf(50000)));
+
+        Reservation reservation = reservationCommandService.reserve(
+                new CreateReservationCommand(1L, seat.getId(), seat.getPrice())
+        );
+
+        // when
+        Payment payment = paymentService.pay(
+                new CreatePaymentCommand(1L, reservation.getId(), seat.getPrice())
+        );
+
+        // then
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
+
+        String rankingKey = "concert-soldout-ranking:" + LocalDate.now();
+        Set<String> rankingMembers = redisTemplate.opsForZSet().range(rankingKey, 0, -1);
+        assertThat(rankingMembers).contains(String.valueOf(concert.getId()));
     }
 }

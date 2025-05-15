@@ -1,9 +1,11 @@
 package kr.hhplus.be.server.application.payment;
 
 import kr.hhplus.be.server.application.cash.CashCommandService;
+import kr.hhplus.be.server.application.concert.ConcertRankingService;
 import kr.hhplus.be.server.application.payment.CreatePaymentCommand;
 import kr.hhplus.be.server.application.payment.PaymentCommandService;
 import kr.hhplus.be.server.domain.concert.Concert;
+import kr.hhplus.be.server.domain.concert.ConcertRepository;
 import kr.hhplus.be.server.domain.concert.ConcertSeat;
 import kr.hhplus.be.server.domain.concert.SeatStatus;
 import kr.hhplus.be.server.domain.payment.Payment;
@@ -12,6 +14,7 @@ import kr.hhplus.be.server.domain.reservation.Reservation;
 import kr.hhplus.be.server.domain.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.payment.PaymentRepository;
 import kr.hhplus.be.server.domain.user.User;
+import kr.hhplus.be.server.infrastructure.concert.ConcertSeatCountRedisRepository;
 import kr.hhplus.be.server.support.exception.CustomException;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -19,6 +22,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -39,8 +43,10 @@ public class PaymentCommandServiceTest {
     @Mock
     private ReservationRepository reservationRepository;
 
-    @Mock
-    private CashCommandService cashCommandService;
+    @Mock private CashCommandService cashCommandService;
+    @Mock private ConcertRankingService concertRankingService;
+    @Mock private ConcertSeatCountRedisRepository concertSeatCountRedisRepository;
+    @Mock private ConcertRepository concertRepository;
 
     @InjectMocks
     private PaymentCommandService paymentCommandService;
@@ -55,13 +61,22 @@ public class PaymentCommandServiceTest {
         CreatePaymentCommand command = new CreatePaymentCommand(userId, reservationId, amount);
 
         User user = new User(userId);
+
+        // 콘서트 정보 설정 (ID 및 공연시간)
         Concert concert = Concert.withStatus(kr.hhplus.be.server.domain.concert.ConcertStatus.READY);
+        ReflectionTestUtils.setField(concert, "id", 1L);
+        ReflectionTestUtils.setField(concert, "concertDateTime", LocalDateTime.now().minusMinutes(3));
+
+        // 좌석 정보 설정
         ConcertSeat seat = ConcertSeat.withAll(
                 100L, concert, "A1", "1층", "A", "VIP", amount, SeatStatus.RESERVED, LocalDateTime.now());
+
         Reservation reserved = Reservation.create(user, seat, amount);
 
         when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reserved));
         when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(concertSeatCountRedisRepository.decrementRemainCount(1L)).thenReturn(0L);
+        lenient().when(concertRepository.findById(1L)).thenReturn(Optional.of(concert));
 
         // when : 결제 요청
         Payment payment = paymentCommandService.pay(command);
@@ -75,6 +90,8 @@ public class PaymentCommandServiceTest {
         ));
         verify(reservationRepository).save(any());
         verify(paymentRepository).save(any());
+        verify(concertSeatCountRedisRepository).decrementRemainCount(concert.getId());
+        verify(concertRankingService).recordSoldOutTime(eq(concert.getId()), anyLong(), anyLong());
     }
 
     @Test
