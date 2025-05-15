@@ -15,10 +15,9 @@ import kr.hhplus.be.server.domain.payment.Payment;
 import kr.hhplus.be.server.domain.payment.PaymentRepository;
 import kr.hhplus.be.server.domain.payment.PaymentStatus;
 import kr.hhplus.be.server.domain.reservation.Reservation;
-import kr.hhplus.be.server.domain.token.QueueToken;
 import kr.hhplus.be.server.domain.token.TokenRepository;
+import kr.hhplus.be.server.domain.token.TokenStatus;
 import kr.hhplus.be.server.support.exception.CustomException;
-import kr.hhplus.be.server.support.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,17 +31,18 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest
 @Transactional
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 public class PaymentIntegrationTest extends TestContainerConfig {
 
     @Autowired
-    private PaymentCommandService paymentService;
+    private PaymentCommandService paymentCommandService;
 
     @Autowired
     private PaymentQueryService paymentQueryService;
@@ -74,117 +74,94 @@ public class PaymentIntegrationTest extends TestContainerConfig {
     @Autowired
     private EntityManager entityManager;
 
+    private Long userId = 1L;
+    private Long seatId;
+
     @BeforeEach
-    void clearRedis() {
-        redisTemplate.getConnectionFactory().getConnection().flushAll();
+    void setUp() throws InterruptedException {
+        clearRedisQueue();
+        Reservation reservation = createReservation(userId);
+        seatId = reservation.getConcertSeat().getId();
+        entityManager.flush();
     }
 
-    private Reservation createReservation() {
+    private Reservation createReservation(Long userId) throws InterruptedException {
         Concert concert = concertRepository.save(
-                Concert.create("Test Concert", 1, ConcertStatus.READY, LocalDateTime.now().plusDays(1)));
+                Concert.create("통합 테스트용 콘서트", 1, ConcertStatus.OPENED, LocalDateTime.now().plusMinutes(5))
+        );
 
         ConcertSeat seat = concertSeatRepository.save(
-                ConcertSeat.of(concert, "A1", "1층", "A", "VIP", BigDecimal.valueOf(10000)));
+                ConcertSeat.of(concert, "A1", "1층", "A", "VIP", BigDecimal.valueOf(10000))
+        );
 
-        QueueToken token = new QueueToken(1L, LocalDateTime.now());
-        token.activate(); // 상태를 WAITING -> ACTIVE 로 전환
-        tokenRepository.save(token);
+        String tokenId = tokenCommandService.issue(userId);
+        Thread.sleep(100); // Redis 반영 대기
+        waitUntilTokenIsFirst(tokenId);
+        tokenCommandService.activateEligibleTokens(1000);
 
-        cashService.charge(new ChargeCashCommand(1L, BigDecimal.valueOf(100000)));
+        cashService.charge(new ChargeCashCommand(userId, BigDecimal.valueOf(20000)));
 
         return reservationCommandService.reserve(
-                new CreateReservationCommand(1L, seat.getId(), BigDecimal.valueOf(10000)));
+                new CreateReservationCommand(tokenId, userId, seat.getId(), seat.getPrice())
+        );
     }
 
     @Test
     @DisplayName("결제를 성공적으로 생성할 수 있다")
     void create_payment_success() {
         // given
-        Reservation reservation = createReservation();
-        CreatePaymentCommand command = new CreatePaymentCommand(1L, reservation.getId(), BigDecimal.valueOf(5000));
+        CreatePaymentCommand command = new CreatePaymentCommand(userId, seatId, BigDecimal.valueOf(10000));
 
         // when
-        Payment payment = paymentService.pay(command);
+        paymentCommandService.pay(command);
 
         // then
-        assertThat(payment).isNotNull();
-        assertThat(payment.getReservation().getUserId()).isEqualTo(1L);
-        assertThat(payment.getAmount()).isEqualTo(BigDecimal.valueOf(5000));
+        Optional<Payment> result = paymentRepository.findByUserId(userId).stream()
+                .filter(p -> p.getReservation().getConcertSeat().getId().equals(seatId))
+                .findFirst();
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getStatus()).isEqualTo(PaymentStatus.PAID);
     }
 
     @Test
     @DisplayName("유저 ID로 결제 내역을 조회할 수 있다")
-    void get_payment_history_by_userId() {
+    void get_payment_history_by_userId() throws InterruptedException {
         // given
-        Concert concert = concertRepository.save(
-                Concert.create("Payment Test Concert", 1, ConcertStatus.READY, LocalDateTime.now().plusDays(1)));
+        Reservation r1 = createReservation(userId);
+        Reservation r2 = createReservation(userId);
 
-        ConcertSeat seat1 = concertSeatRepository.save(
-                ConcertSeat.of(concert, "B1", "1층", "B", "R", BigDecimal.valueOf(10000)));
+        paymentCommandService.pay(new CreatePaymentCommand(1L, r1.getId(), BigDecimal.valueOf(3000)));
+        paymentCommandService.pay(new CreatePaymentCommand(1L, r2.getId(), BigDecimal.valueOf(7000)));
 
-        ConcertSeat seat2 = concertSeatRepository.save(
-                ConcertSeat.of(concert, "B2", "1층", "B", "R", BigDecimal.valueOf(10000)));
-
-        // 유저 1, 유저 2 각각 대기열 발급
-        QueueToken token1 = new QueueToken(1L, LocalDateTime.now());
-        token1.activate();
-        tokenRepository.save(token1);
-
-        QueueToken token2 = new QueueToken(2L, LocalDateTime.now());
-        token2.activate();
-        tokenRepository.save(token2);
-
-        // 토큰 활성화
-        tokenCommandService.activate(1L);
-        tokenCommandService.activate(2L);
-
-        // 캐시 충전
-        cashService.charge(new ChargeCashCommand(1L, BigDecimal.valueOf(100000)));
-        cashService.charge(new ChargeCashCommand(2L, BigDecimal.valueOf(100000)));
-
-        // 유저 1, 2 각각 예약
-        Reservation reservation1 = reservationCommandService.reserve(
-                new CreateReservationCommand(1L, seat1.getId(), BigDecimal.valueOf(10000))
-        );
-        Reservation reservation2 = reservationCommandService.reserve(
-                new CreateReservationCommand(1L, seat2.getId(), BigDecimal.valueOf(10000))
-        );
-
-        // 유저 1이 두 건 결제
-        paymentService.pay(new CreatePaymentCommand(1L, reservation1.getId(), BigDecimal.valueOf(3000)));
-        paymentService.pay(new CreatePaymentCommand(1L, reservation2.getId(), BigDecimal.valueOf(7000)));
-
-        // when
         List<Payment> payments = paymentQueryService.findByUserId(1L);
 
-        // then
         assertThat(payments).hasSize(2);
         assertThat(payments).allMatch(p -> p.getReservation().getUserId().equals(1L));
     }
 
     @Test
-    @DisplayName("결제 시 잔액 부족으로 예외가 발생한다")
-    void payment_fail_due_to_insufficient_cash() {
+    @DisplayName("중복 결제 시 예외 발생")
+    void pay_duplicate_shouldFail() {
         // given
-        Reservation reservation = createReservation();
-        CreatePaymentCommand command = new CreatePaymentCommand(1L, reservation.getId(), BigDecimal.valueOf(1000000));
+        CreatePaymentCommand command = new CreatePaymentCommand(userId, seatId, BigDecimal.valueOf(10000));
+        paymentCommandService.pay(command);
 
-        // when // then
-        assertThatThrownBy(() -> paymentService.pay(command))
+        // expect
+        assertThatThrownBy(() -> paymentCommandService.pay(command))
                 .isInstanceOf(CustomException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.INVALID_REQUEST);
+                .hasMessageContaining("이미 결제된 예약입니다");
     }
 
     @Test
     @DisplayName("결제를 취소할 수 있다")
-    void cancel_payment_success() {
+    void cancel_payment_success() throws InterruptedException {
         // given
-        Reservation reservation = createReservation();
-        Payment payment = paymentService.pay(new CreatePaymentCommand(1L, reservation.getId(), BigDecimal.valueOf(3000)));
+        Reservation reservation = createReservation(1L);
+        Payment payment = paymentCommandService.pay(new CreatePaymentCommand(userId, reservation.getId(), BigDecimal.valueOf(3000)));
 
         // when
-        paymentService.cancel(payment.getId());
+        paymentCommandService.cancel(payment.getId());
 
         // then
         Payment canceled = paymentRepository.findById(payment.getId()).orElseThrow();
@@ -193,34 +170,20 @@ public class PaymentIntegrationTest extends TestContainerConfig {
 
     @Test
     @DisplayName("결제 금액이 0 이하일 경우 예외가 발생한다")
-    void pay_withInvalidAmount_throwsException() {
+    void pay_withInvalidAmount_throwsException() throws InterruptedException {
         // given
-        Reservation reservation = createReservation();
+        Reservation reservation = createReservation(userId);
 
         // when // then
         assertThatThrownBy(() ->
-                new CreatePaymentCommand(1L, reservation.getId(), BigDecimal.ZERO))
+                paymentCommandService.pay(new CreatePaymentCommand(1L, reservation.getId(), BigDecimal.ZERO)))
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining("price는 필수이며 0보다 커야 합니다.");
     }
 
     @Test
-    @DisplayName("결제 완료 시 상태가 PAID로 설정된다")
-    void pay_success_setsStatusToPaid() {
-        // given
-        Reservation reservation = createReservation();
-        CreatePaymentCommand command = new CreatePaymentCommand(1L, reservation.getId(), BigDecimal.valueOf(3000));
-
-        // when
-        Payment payment = paymentService.pay(command);
-
-        // then
-        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
-    }
-
-    @Test
     @DisplayName("매진되면 랭킹 기록이 수행된다")
-    void pay_lastSeat_triggersRankingRecord() {
+    void pay_lastSeat_triggersRankingRecord() throws InterruptedException {
         // given
         Concert concert = concertRepository.save(
                 Concert.create("매진 콘서트", 1, ConcertStatus.READY, LocalDateTime.now().plusMinutes(5))
@@ -233,19 +196,17 @@ public class PaymentIntegrationTest extends TestContainerConfig {
         String remainKey = "concert-seat-remain:" + concert.getId();
         redisTemplate.opsForValue().set(remainKey, "1");
 
-        QueueToken token = new QueueToken(1L, LocalDateTime.now());
-        token.activate();
-        tokenRepository.save(token);
-
-        cashService.charge(new ChargeCashCommand(1L, BigDecimal.valueOf(50000)));
+        String tokenId = tokenCommandService.issue(userId);
+        Thread.sleep(1);
+        tokenCommandService.activateEligibleTokens(1000);
+        cashService.charge(new ChargeCashCommand(userId, BigDecimal.valueOf(50000)));
 
         Reservation reservation = reservationCommandService.reserve(
-                new CreateReservationCommand(1L, seat.getId(), seat.getPrice())
-        );
+                new CreateReservationCommand(tokenId, userId, seat.getId(), seat.getPrice()));
 
         // when
-        Payment payment = paymentService.pay(
-                new CreatePaymentCommand(1L, reservation.getId(), seat.getPrice())
+        Payment payment = paymentCommandService.pay(
+                new CreatePaymentCommand(userId, reservation.getId(), seat.getPrice())
         );
 
         // then
@@ -254,5 +215,31 @@ public class PaymentIntegrationTest extends TestContainerConfig {
         String rankingKey = "concert-soldout-ranking:" + LocalDate.now();
         Set<String> rankingMembers = redisTemplate.opsForZSet().range(rankingKey, 0, -1);
         assertThat(rankingMembers).contains(String.valueOf(concert.getId()));
+    }
+
+    private void clearRedisQueue() {
+        redisTemplate.delete("waiting-token:WAITING");
+        redisTemplate.delete("active-token");
+
+        Set<String> tokenKeys = redisTemplate.keys("token:*");
+        if (tokenKeys != null && !tokenKeys.isEmpty()) {
+            redisTemplate.delete(tokenKeys);
+        }
+    }
+
+    private void waitUntilTokenIsFirst(String tokenId) throws InterruptedException {
+        int retry = 0;
+        while (retry++ < 200) {  // 최대 1초 대기 (200 * 5ms)
+            Set<String> first = redisTemplate.opsForZSet().range("waiting-token:WAITING", 0, 0);
+            if (first != null && first.contains(tokenId)) {
+                return; // 선두일 때만 통과
+            }
+            Thread.sleep(5);
+        }
+        Set<String> currentQueue = redisTemplate.opsForZSet().range("waiting-token:WAITING", 0, -1);
+        System.out.println("❌ 대기열 선두 아님: " + tokenId);
+        System.out.println("📌 현재 대기열: " + currentQueue);
+
+        throw new IllegalStateException("토큰이 대기열 선두가 되지 못했습니다: " + tokenId);
     }
 }
