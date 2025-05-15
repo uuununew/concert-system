@@ -21,7 +21,6 @@ import java.util.UUID;
 public class TokenCommandService {
 
     private final TokenRepository tokenRepository;
-    private final TokenManager tokenManager;
     private final Clock clock;
 
     @Value("${token.expire.minutes:15}")
