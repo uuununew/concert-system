@@ -4,31 +4,17 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface TokenRepository {
 
-    QueueToken save(QueueToken token);
+    void enqueue(String tokenId, long score);
 
-    // 현재 토큰 상태 조회
-    Optional<QueueToken> findByUserId(Long userId);
+    Optional<Integer> getWaitingPosition(String tokenId);
 
-    // 유저 대기열 이탈
-    void delete(Long userId);
+    void delete(String tokenId);
 
-    int size();
+    void expireTokensBefore(long thresholdEpochSeconds);
 
-    List<QueueToken> findAll();
-
-    // 단건 조회
-    QueueToken enqueue(Long userId, Clock clock);
-
-    List<QueueToken> findAllWaiting();
-
-    // 해당 userId의 WAITING 순서 조회
-    Optional<Integer> getWaitingPosition(Long userId);
-
-    List<QueueToken> findAllByStatusAndIssuedAtBefore(TokenStatus status, LocalDateTime before);
-
-    List<QueueToken> findAllByStatusOrderByIssuedAt(TokenStatus status);
-
+    Set<String> findTopTokens(int limit);
 }
