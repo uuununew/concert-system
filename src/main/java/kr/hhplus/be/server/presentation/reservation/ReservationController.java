@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.presentation.reservation;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import kr.hhplus.be.server.application.reservation.ReservationCommandService;
 import kr.hhplus.be.server.domain.reservation.Reservation;
@@ -23,8 +24,9 @@ public class ReservationController {
      */
     @PostMapping
     public ResponseEntity<ReservationResponse> reserve(
-            @RequestBody @Valid CreateReservationRequest request
+            @RequestBody @Valid CreateReservationRequest request, HttpServletRequest httpRequest
     ) {
+        Long userId = (Long) httpRequest.getAttribute("userId");  // Interceptor가 세팅한 값
         Reservation reservation = reservationCommandService.reserve(request.toCommand());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ReservationResponse.from(reservation));
@@ -33,7 +35,6 @@ public class ReservationController {
     /**
      * [PUT] /cancel
      * 취소 API
-     * - 예약을 취소하고, 사용자에게 토큰을 복구시켜줌 (토큰 상태: WAITING으로 재설정)
      */
     @PutMapping("/cancel")
     public ResponseEntity<ReservationResponse> cancel(
