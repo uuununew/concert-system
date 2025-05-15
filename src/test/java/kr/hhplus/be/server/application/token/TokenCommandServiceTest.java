@@ -26,7 +26,7 @@ public class TokenCommandServiceTest{
         tokenRepository = mock(TokenRepository.class);
         tokenManager = mock(TokenManager.class);
         clock = Clock.fixed(Instant.parse("2025-05-15T12:00:00Z"), ZoneOffset.UTC);
-        tokenCommandService = new TokenCommandService(tokenRepository, tokenManager, clock, 10);
+        tokenCommandService = new TokenCommandService(tokenRepository, clock, 10);
     }
 
     @Test
