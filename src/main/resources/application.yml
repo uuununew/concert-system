@@ -24,7 +24,14 @@ spring:
         dialect: org.hibernate.dialect.MySQL8Dialect
       hibernate.timezone.default_storage: NORMALIZE_UTC
       hibernate.jdbc.time_zone: UTC
-
+logging:
+  level:
+    root: INFO
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.data.redis.core: DEBUG
+    kr.hhplus: DEBUG
 ---
 
 spring:

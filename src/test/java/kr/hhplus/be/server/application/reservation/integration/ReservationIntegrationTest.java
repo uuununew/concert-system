@@ -2,11 +2,11 @@ package kr.hhplus.be.server.application.reservation.integration;
 
 import kr.hhplus.be.server.application.reservation.CreateReservationCommand;
 import kr.hhplus.be.server.application.reservation.ReservationCommandService;
+import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.config.TestContainerConfig;
 import kr.hhplus.be.server.domain.reservation.Reservation;
 import kr.hhplus.be.server.domain.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.reservation.ReservationStatus;
-import kr.hhplus.be.server.domain.token.QueueToken;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import kr.hhplus.be.server.domain.concert.*;
@@ -43,7 +43,12 @@ public class ReservationIntegrationTest extends TestContainerConfig {
     @Autowired
     private TokenRepository tokenRepository;
 
+    @Autowired
+    private TokenCommandService tokenCommandService;
+
     private Long concertSeatId;
+    private String tokenId;
+    private final Long userId = 1L;
 
     @BeforeEach
     void setUp() {
@@ -55,9 +60,9 @@ public class ReservationIntegrationTest extends TestContainerConfig {
                 ConcertSeat.of(concert, "A1", "1층", "A", "VIP", BigDecimal.valueOf(10000)));
         concertSeatId = seat.getId();
 
-        QueueToken token = new QueueToken(1L, LocalDateTime.now());
-        token.activate(); // 대기열 상태를 ACTIVE로 변경
-        tokenRepository.save(token); // 활성화된 토큰 저장
+        // 토큰 발급 및 활성화
+        tokenId = tokenCommandService.issue(userId);
+        tokenCommandService.activateEligibleTokens(1000);
     }
 
     @Test
@@ -65,7 +70,7 @@ public class ReservationIntegrationTest extends TestContainerConfig {
     void reserve_success() {
         // given
         CreateReservationCommand command = new CreateReservationCommand(
-                1L, concertSeatId, BigDecimal.valueOf(10000));
+                tokenId, userId, concertSeatId, BigDecimal.valueOf(10000));
 
         // when
         Reservation reservation = reservationCommandService.reserve(command);
@@ -81,7 +86,7 @@ public class ReservationIntegrationTest extends TestContainerConfig {
     @DisplayName("예약 ID로 예약 정보를 조회할 수 있다")
     void find_reservation_by_id() {
         // given
-        CreateReservationCommand command = new CreateReservationCommand(1L, concertSeatId, BigDecimal.valueOf(10000));
+        CreateReservationCommand command = new CreateReservationCommand(tokenId, userId, concertSeatId, BigDecimal.valueOf(10000));
         Reservation reservation = reservationCommandService.reserve(command);
 
         // when
@@ -97,31 +102,20 @@ public class ReservationIntegrationTest extends TestContainerConfig {
     @DisplayName("이미 예약된 좌석은 예약할 수 없다")
     void reserve_fail_if_already_reserved() {
         // given
-        CreateReservationCommand command = new CreateReservationCommand(
-                1L, concertSeatId, BigDecimal.valueOf(10000));
+        CreateReservationCommand command = new CreateReservationCommand(tokenId, userId, concertSeatId, BigDecimal.valueOf(10000));
+        reservationCommandService.reserve(command);
 
-        // 기존 토큰 삭제
-        tokenRepository.findByUserId(1L)
-                .ifPresent(token -> tokenRepository.delete(token.getUserId()));
+        // 재시도용 토큰
+        String newTokenId = tokenCommandService.issue(userId);
+        tokenCommandService.activateEligibleTokens(1000);
 
-        // 새 토큰 저장 및 활성화
-        QueueToken token = new QueueToken(1L, LocalDateTime.now().minusSeconds(10));
-        token.activate();
-        tokenRepository.save(token);
-
-        reservationCommandService.reserve(command); // 첫 예약 성공
-
-        // 두 번째 토큰 재등록 (다시 활성화)
-        tokenRepository.findByUserId(1L)
-                .ifPresent(t -> tokenRepository.delete(t.getUserId()));
-        QueueToken secondToken = new QueueToken(1L, LocalDateTime.now().minusSeconds(5));
-        secondToken.activate();
-        tokenRepository.save(secondToken);
+        CreateReservationCommand secondCommand = new CreateReservationCommand(
+                newTokenId, userId, concertSeatId, BigDecimal.valueOf(10000));
 
         // when // then
-        assertThatThrownBy(() -> reservationCommandService.reserve(command))
+        assertThatThrownBy(() -> reservationCommandService.reserve(secondCommand))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("예약할 수 없는 좌석입니다.");
+                .hasMessageContaining("예약할 수 없는 좌석입니다");
     }
 
     @Test
@@ -129,7 +123,7 @@ public class ReservationIntegrationTest extends TestContainerConfig {
     void reserve_fail_if_seat_not_found() {
         // given
         CreateReservationCommand command = new CreateReservationCommand(
-                1L, 9999L, BigDecimal.valueOf(10000));
+                tokenId, userId, 9999L, BigDecimal.valueOf(10000));
 
         // when //then
         assertThatThrownBy(() -> reservationCommandService.reserve(command))
@@ -142,7 +136,7 @@ public class ReservationIntegrationTest extends TestContainerConfig {
     void reserve_fail_if_token_missing() {
         // given
         CreateReservationCommand command = new CreateReservationCommand(
-                999L, concertSeatId, BigDecimal.valueOf(10000));
+                "invalid-token-id", userId, concertSeatId, BigDecimal.valueOf(10000));
 
         // when //then
         assertThatThrownBy(() -> reservationCommandService.reserve(command))

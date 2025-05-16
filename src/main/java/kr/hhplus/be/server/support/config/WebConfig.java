@@ -1,6 +1,7 @@
 package kr.hhplus.be.server.support.config;
 
 import kr.hhplus.be.server.application.token.TokenCommandService;
+import kr.hhplus.be.server.application.token.TokenQueryService;
 import kr.hhplus.be.server.support.filter.LoggingFilter;
 import kr.hhplus.be.server.support.interceptor.TokenValidationInterceptor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -24,7 +25,6 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/reservations/**")
                 .excludePathPatterns("/token/**");
     }
-
     @Bean
     public FilterRegistrationBean<LoggingFilter> loggingFilter() {
         FilterRegistrationBean<LoggingFilter> registration = new FilterRegistrationBean<>();

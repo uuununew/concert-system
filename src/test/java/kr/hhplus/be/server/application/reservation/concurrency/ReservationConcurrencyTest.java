@@ -4,9 +4,8 @@ import kr.hhplus.be.server.application.concert.ConcertService;
 import kr.hhplus.be.server.application.concert.CreateConcertCommand;
 import kr.hhplus.be.server.application.reservation.CreateReservationCommand;
 import kr.hhplus.be.server.application.reservation.ReservationCommandService;
+import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.domain.concert.*;
-import kr.hhplus.be.server.domain.reservation.Reservation;
-import kr.hhplus.be.server.domain.token.QueueToken;
 import kr.hhplus.be.server.domain.token.TokenRepository;
 import kr.hhplus.be.server.support.config.RedisTestContainerConfig;
 import kr.hhplus.be.server.support.exception.CustomException;
@@ -23,7 +22,9 @@ import org.springframework.test.context.ActiveProfiles;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -54,6 +55,9 @@ public class ReservationConcurrencyTest{
     private ReservationCommandService reservationCommandService;
 
     @Autowired
+    private TokenCommandService tokenCommandService;
+
+    @Autowired
     private StringRedisTemplate redisTemplate;
 
     private Long seatId;
@@ -73,14 +77,15 @@ public class ReservationConcurrencyTest{
         // 2. Redis 락 초기화
         redisTemplate.delete("seat:" + seatId);
 
-        // 3. 토큰 생성: userId=1이 가장 앞서도록 issuedAt 설정
-        LocalDateTime now = LocalDateTime.now();
+        // 3. 토큰 생성
+        Map<Long, String> userTokenMap = new HashMap<>();
         for (long userId = 1; userId <= 10; userId++) {
-            LocalDateTime issuedAt = now.minusSeconds(100 + (10 - userId));  // userId=1이 가장 오래됨
-            QueueToken token = new QueueToken(userId, issuedAt);
-            if (userId == 1) token.activate();
-            tokenRepository.save(token);
+            String tokenId = tokenCommandService.issue(userId);
+            userTokenMap.put(userId, tokenId);
         }
+
+        // 4. 토큰 활성화: 상위 1000명 활성화
+        tokenCommandService.activateEligibleTokens(1000);
 
         // given : 테스트용 좌석에 대해 동시에 예약을 시도할 유저 수 설정
         int threadCount = 10;
@@ -105,7 +110,7 @@ public class ReservationConcurrencyTest{
 
                     // 락 획득에 실패하면 null 또는 예외 발생할 수 있음
                     reservationCommandService.reserve(
-                            new CreateReservationCommand(userId, seatId, BigDecimal.valueOf(10000)));
+                            new CreateReservationCommand(userTokenMap.get(userId), userId, seatId, BigDecimal.valueOf(10000)));
 
                     log.info("예약 성공: userId={}", userId);
                     successCount.incrementAndGet(); // 예외 없이 통과되면 성공

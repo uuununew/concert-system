@@ -1,23 +1,17 @@
 package kr.hhplus.be.server.application.reservation;
 
-import kr.hhplus.be.server.application.reservation.CreateReservationCommand;
-import kr.hhplus.be.server.application.reservation.ReservationCommandService;
 import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.domain.concert.*;
 import kr.hhplus.be.server.domain.reservation.Reservation;
 import kr.hhplus.be.server.domain.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.reservation.ReservationStatus;
-import kr.hhplus.be.server.domain.token.QueueToken;
-import kr.hhplus.be.server.domain.token.TokenRepository;
-import kr.hhplus.be.server.domain.token.TokenStatus;
 import kr.hhplus.be.server.support.exception.CustomException;
+import kr.hhplus.be.server.support.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.junit.jupiter.api.Test;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -32,27 +26,21 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class ReservationCommandServiceTest {
 
-    @Mock
-    private ReservationRepository reservationRepository;
-
-    @Mock
-    private ConcertSeatRepository concertSeatRepository;
-
-    @Mock
-    private TokenRepository tokenRepository;
-
-    @Mock
     private TokenCommandService tokenCommandService;
-
+    private ReservationRepository reservationRepository;
+    private ConcertSeatRepository concertSeatRepository;
     private ReservationCommandService reservationCommandService;
 
     @BeforeEach
     void setUp() {
+        tokenCommandService = mock(TokenCommandService.class);
+        reservationRepository = mock(ReservationRepository.class);
+        concertSeatRepository = mock(ConcertSeatRepository.class);
+
         reservationCommandService = new ReservationCommandService(
                 tokenCommandService,
                 reservationRepository,
-                concertSeatRepository,
-                tokenRepository
+                concertSeatRepository
         );
     }
 
@@ -60,55 +48,56 @@ public class ReservationCommandServiceTest {
     @DisplayName("예약을 정상적으로 등록한다")
     void reserve_success() {
         // given
-        QueueToken token = new QueueToken(1L, LocalDateTime.now());
-        token.activate();
+        String tokenId = "token-1";
+        Long userId = 1L;
+        Long seatId = 2L;
 
-        when(tokenCommandService.status(1L)).thenReturn(Optional.of(token));
+        when(tokenCommandService.status(tokenId)).thenReturn(Optional.of(0));
 
-        CreateReservationCommand command = new CreateReservationCommand(1L, 2L, BigDecimal.valueOf(10000));
+        CreateReservationCommand command = new CreateReservationCommand(tokenId, userId, seatId, BigDecimal.valueOf(10000));
         Concert concert = new Concert("테스트 콘서트", 1, ConcertStatus.READY, LocalDateTime.now());
 
         ConcertSeat seat = ConcertSeat.withAll(
-                2L, concert, "A1", "1층", "A", "VIP", BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now());
+                seatId, concert, "A1", "1층", "A", "VIP", BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now());
 
-        when(concertSeatRepository.findByIdWithOptimistic(2L)).thenReturn(Optional.of(seat));
+        when(concertSeatRepository.findByIdWithOptimistic(seatId)).thenReturn(Optional.of(seat));
         when(reservationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // when
         Reservation result = reservationCommandService.reserve(command);
 
         // then
-        assertThat(result.getUserId()).isEqualTo(1L);
-        assertThat(result.getConcertSeat().getId()).isEqualTo(2L);
+        assertThat(result.getUserId()).isEqualTo(userId);
+        assertThat(result.getConcertSeat().getId()).isEqualTo(seatId);
         assertThat(result.getStatus()).isEqualTo(ReservationStatus.RESERVED);
-        verify(reservationRepository).save(any());
-        verify(tokenCommandService).complete(1L);
+        verify(tokenCommandService).complete(tokenId);
     }
 
     @Test
     @DisplayName("이미 예약된 좌석이면 예외 발생")
     void reserve_fail_when_already_reserved() {
         // given
-        QueueToken token = new QueueToken(1L, LocalDateTime.now());
-        token.activate();
+        String tokenId = "token-1";
+        Long seatId = 2L;
 
-        when(tokenCommandService.status(1L)).thenReturn(Optional.of(token));
+        when(tokenCommandService.status(tokenId)).thenReturn(Optional.of(0));
 
-        CreateReservationCommand command = new CreateReservationCommand(1L, 2L, BigDecimal.valueOf(10000));
+        CreateReservationCommand command = new CreateReservationCommand(tokenId, 1L, seatId, BigDecimal.valueOf(10000));
         Concert concert = new Concert("테스트 콘서트", 1, ConcertStatus.READY, LocalDateTime.now());
+
         ConcertSeat seat = ConcertSeat.withAll(
-                2L, concert, "A1", "1층", "A", "VIP",
+                seatId, concert, "A1", "1층", "A", "VIP",
                 BigDecimal.valueOf(10000), SeatStatus.AVAILABLE, LocalDateTime.now()
         );
-        //when
-        when(concertSeatRepository.findByIdWithOptimistic(2L)).thenReturn(Optional.of(seat));
-        when(reservationRepository.save(any())).thenThrow(
-                new org.springframework.orm.ObjectOptimisticLockingFailureException("", new RuntimeException()));
 
-        // then
+        when(concertSeatRepository.findByIdWithOptimistic(seatId)).thenReturn(Optional.of(seat));
+        when(reservationRepository.save(any()))
+                .thenThrow(new org.springframework.orm.ObjectOptimisticLockingFailureException("Reservation", null));
+
+        // expect
         assertThatThrownBy(() -> reservationCommandService.reserve(command))
                 .isInstanceOf(CustomException.class)
-                .hasMessageContaining("이미 예약된 좌석입니다");
+                .hasMessageContaining(ErrorCode.ALREADY_RESERVED.getMessage());
     }
 
     @Test
@@ -116,18 +105,20 @@ public class ReservationCommandServiceTest {
     void cancel_success() {
         // given
         Long reservationId = 10L;
-        Reservation mockReservation = mock(Reservation.class);
-        when(mockReservation.cancel()).thenReturn(mock(Reservation.class));
-        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(mockReservation));
-        when(reservationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        Reservation reservation = mock(Reservation.class);
+        Reservation canceled = mock(Reservation.class);
+
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+        when(reservation.cancel()).thenReturn(canceled);
+        when(reservationRepository.save(canceled)).thenReturn(canceled);
 
         // when
         Reservation result = reservationCommandService.cancel(reservationId);
 
         // then
+        assertThat(result).isEqualTo(canceled);
         verify(reservationRepository).findById(reservationId);
-        verify(mockReservation).cancel();
-        verify(reservationRepository).save(any());
+        verify(reservationRepository).save(canceled);
     }
 
     @Test

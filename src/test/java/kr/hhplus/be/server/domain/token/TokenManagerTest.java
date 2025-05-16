@@ -1,9 +1,11 @@
 package kr.hhplus.be.server.domain.token;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.mockito.Mockito.mock;
@@ -14,28 +16,27 @@ import static org.mockito.Mockito.*;
 
 public class TokenManagerTest {
 
-    @DisplayName("대기 중인 토큰 중 가장 먼저 발급된 하나를 ACTIVE 상태로 전환한다.")
+    TokenRepository tokenRepository;
+    TokenManager tokenManager;
+
+    @BeforeEach
+    void setUp() {
+        tokenRepository = mock(TokenRepository.class);
+        tokenManager = new TokenManager(tokenRepository);
+    }
+
     @Test
-    void activateTokens_should_activate_earliest_waiting_token() {
+    @DisplayName("score가 기준치보다 낮은 토큰은 만료 처리된다")
+    void expireOverdueTokens_shouldCallRepositoryWithCorrectThreshold() {
         // given
-        LocalDateTime now = LocalDateTime.now();
-
-        // 대상이 되는 토큰
-        QueueToken tokenToActivate = new QueueToken(1L, now.minusMinutes(10));
-        tokenToActivate.restore(); // WAITING 상태
-
-        List<QueueToken> eligibleTokens = List.of(tokenToActivate);
-
-        TokenRepository mockRepository = mock(TokenRepository.class);
-        when(mockRepository.findAllByStatusAndIssuedAtBefore(TokenStatus.WAITING, now.minusMinutes(3)))
-                .thenReturn(eligibleTokens);
-
-        TokenManager tokenManager = new TokenManager(mockRepository);
+        LocalDateTime now = LocalDateTime.of(2025, 5, 15, 12, 0, 0);
+        int expireMinutes = 10;
+        long expectedThreshold = now.minusMinutes(expireMinutes).toEpochSecond(ZoneOffset.UTC);
 
         // when
-        tokenManager.activateTokens(now);
+        tokenManager.expireOverdueTokens(expireMinutes, now);
 
         // then
-        assertThat(tokenToActivate.getStatus()).isEqualTo(TokenStatus.ACTIVE);
+        verify(tokenRepository).expireTokensBefore(expectedThreshold);
     }
 }
