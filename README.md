@@ -39,6 +39,10 @@
 [캐싱 전략 설계 및 적용 보고서](https://sunrise-sunfish-45d.notion.site/1edcc24e980180768447f07faf7f9f06?pvs=4)
 
 
+### Redis 기반 랭킹, 비동기 설계 및 구현 보고서
+[Redis 기반 랭킹, 비동기 설계 및 구현 보고서](https://uuununew.notion.site/Redis-1f4cc24e980180309dcdf69539090fbd?pvs=4)
+
+
 
 
 
