@@ -237,8 +237,8 @@ public class PaymentIntegrationTest extends TestContainerConfig {
             Thread.sleep(5);
         }
         Set<String> currentQueue = redisTemplate.opsForZSet().range("waiting-token:WAITING", 0, -1);
-        System.out.println("❌ 대기열 선두 아님: " + tokenId);
-        System.out.println("📌 현재 대기열: " + currentQueue);
+        System.out.println("대기열 선두 아님: " + tokenId);
+        System.out.println("현재 대기열: " + currentQueue);
 
         throw new IllegalStateException("토큰이 대기열 선두가 되지 못했습니다: " + tokenId);
     }

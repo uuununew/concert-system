@@ -4,6 +4,8 @@ import kr.hhplus.be.server.application.cash.CashCommandService;
 import kr.hhplus.be.server.application.cash.UseCashCommand;
 import kr.hhplus.be.server.application.concert.ConcertRankingService;
 import kr.hhplus.be.server.domain.concert.ConcertRepository;
+import kr.hhplus.be.server.domain.concert.ranking.ConcertRankingRepository;
+import kr.hhplus.be.server.domain.concert.ranking.DailyConcertRanking;
 import kr.hhplus.be.server.domain.payment.Payment;
 import kr.hhplus.be.server.domain.payment.PaymentRepository;
 import kr.hhplus.be.server.domain.reservation.Reservation;
@@ -17,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
@@ -31,6 +34,7 @@ public class PaymentCommandService {
     private final ConcertRankingService concertRankingService;
     private final ConcertSeatCountRedisRepository concertSeatCountRedisRepository;
     private final ConcertRepository concertRepository;
+    private final ConcertRankingRepository concertRankingRepository;
 
     /**
      * 결제 처리
@@ -67,7 +71,12 @@ public class PaymentCommandService {
 
         // 5. 매진이면 랭킹 기록
         if (remain <= 0) {
-            recordSoldOutRanking(concertId, reservation.getConcertSeat().getConcert().getConcertDateTime());
+            try {
+                recordSoldOutRanking(concertId, reservation.getConcertSeat().getConcert().getConcertDateTime());
+            } catch (Exception e) {
+                log.error("매진 랭킹 기록 중 오류 발생: concertId={}, error={}", concertId, e.getMessage(), e);
+                // 예외 발생 시 결제는 정상 처리됨
+            }
         }
         return payment;
     }
@@ -91,9 +100,22 @@ public class PaymentCommandService {
 
         // 매진 시간이 오픈 시간보다 빠른 경우 저장 생략
         if (duration < 0) {
-            log.warn("❗ 매진 시간보다 오픈 시간이 늦어 랭킹 저장을 생략합니다. concertId={}, duration={}ms", concertId, duration);
+            log.warn("매진 시간보다 오픈 시간이 늦어 랭킹 저장을 생략합니다. concertId={}, duration={}ms", concertId, duration);
             return;
         }
-        concertRankingService.recordSoldOutTime(concertId, soldOutAtMillis, openedAtMillis);
+        try {
+            // 1. Redis 기록
+            concertRankingService.recordSoldOutTime(concertId, soldOutAtMillis, openedAtMillis);
+
+            // 2. DB 기록
+            DailyConcertRanking ranking = DailyConcertRanking.builder()
+                    .concertId(concertId)
+                    .soldOutDurationMillis(duration)
+                    .rankingDate(LocalDate.now())
+                    .build();
+
+        } catch (Exception e) {
+            log.error("매진 랭킹 기록 중 오류 발생 (Redis or DB): {}", e.getMessage(), e);
+        }
     }
 }
