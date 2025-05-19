@@ -57,13 +57,13 @@ public class TokenQueryServiceTest {
 
         // then
         assertThat(result.tokenId()).isEqualTo(tokenId);
-        assertThat(result.status()).isEqualTo(kr.hhplus.be.server.domain.token.TokenStatus.WAITING);
+        assertThat(result.status()).isEqualTo(TokenStatus.WAITING);
         assertThat(result.position()).isEqualTo(5);
     }
 
     @Test
-    @DisplayName("토큰이 존재하지 않으면 예외 발생")
-    void getTokenStatus_shouldThrowException_ifTokenNotFound() {
+    @DisplayName("토큰이 존재하지 않으면 NOT_FOUND로 간주")
+    void getTokenStatus_shouldReturnNotFound_ifTokenDoesNotExist() {
         // given
         String tokenId = "not-found";
         when(tokenRepository.getWaitingPosition(tokenId)).thenReturn(Optional.empty());
@@ -73,7 +73,7 @@ public class TokenQueryServiceTest {
 
         // then
         assertThat(result.tokenId()).isEqualTo(tokenId);
-        assertThat(result.status()).isEqualTo(TokenStatus.ACTIVE); // 입장 완료로 간주
+        assertThat(result.status()).isEqualTo(TokenStatus.EXPIRED);
         assertThat(result.position()).isNull();
     }
 }
