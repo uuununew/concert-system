@@ -3,20 +3,21 @@ package kr.hhplus.be.server.application.token.integration;
 import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.application.token.TokenQueryService;
 import kr.hhplus.be.server.config.TestContainerConfig;
-import kr.hhplus.be.server.domain.token.QueueToken;
-import kr.hhplus.be.server.domain.token.TokenRepository;
-import kr.hhplus.be.server.domain.token.TokenStatus;
 import kr.hhplus.be.server.support.exception.CustomException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,74 +30,70 @@ public class TokenIntegrationTest extends TestContainerConfig {
     TokenCommandService tokenCommandService;
 
     @Autowired
-    TokenQueryService tokenQueryService;
-
-    @Autowired
-    TokenRepository tokenRepository;
+    RedisTemplate<String, String> redisTemplate;
 
     @Autowired
     Clock clock;
 
-    @Test
-    @DisplayName("토큰 발급 후 DB에 저장된다")
-    void issue_token_and_persist() {
-        // given
-        Long userId = 100L;
+    private static final String QUEUE_KEY = "reservation:queue";
+    private static final String TTL_PREFIX = "reservation:token:EXPIRE:";
 
-        // when
-        tokenCommandService.issue(userId);
-
-        // then
-        Optional<QueueToken> result = tokenRepository.findByUserId(userId);
-        assertThat(result).isPresent();
-        assertThat(result.get().getStatus()).isEqualTo(TokenStatus.WAITING);
+    @BeforeEach
+    void clearRedis() {
+        redisTemplate.getConnectionFactory().getConnection().flushDb();
     }
 
     @Test
-    @DisplayName("EXPIRED 기준 시간 이후에는 토큰이 만료된다")
-    void expire_token_by_time() {
-        // given
-        Long userId = 200L;
-        QueueToken token = tokenRepository.enqueue(userId, clock);
-
-        // 만료 기준 시간보다 예전 시간으로 강제 설정
-        LocalDateTime past = LocalDateTime.now(clock).minusMinutes(10);
-        token.expire(); // 상태 변경
-
+    @DisplayName("토큰 발급 후 Redis SortedSet과 TTL 키가 모두 저장된다")
+    void issue_token_and_store_in_redis() {
         // when
-        tokenCommandService.complete(userId);
+        String tokenId = tokenCommandService.issue(1L);
 
         // then
-        Optional<QueueToken> result = tokenRepository.findByUserId(userId);
-        assertThat(result).isPresent();
-        assertThat(result.get().getStatus()).isEqualTo(TokenStatus.EXPIRED);
+        Set<String> tokenIds = redisTemplate.opsForZSet().range(QUEUE_KEY, 0, -1);
+        String ttlKey = TTL_PREFIX + tokenId;
+        Boolean ttlExists = redisTemplate.hasKey(ttlKey);
+
+        assertThat(tokenIds).contains(tokenId);
+        assertThat(ttlExists).isTrue();
+    }
+
+
+    @Test
+    @DisplayName("TTL이 만료되면 ZSet에 남아 있어도 expireTokensBefore로 제거된다")
+    void expire_token_by_ttl_check() {
+        // given
+        String tokenId = tokenCommandService.issue(1L);
+        long oldScore = LocalDateTime.now(clock).minusMinutes(20).toEpochSecond(ZoneOffset.UTC);
+        redisTemplate.opsForZSet().add(QUEUE_KEY, tokenId, oldScore);
+
+        redisTemplate.delete(TTL_PREFIX + tokenId); // TTL 만료 시뮬레이션
+
+        // when
+        tokenCommandService.expireOverdueTokens();
+
+        // then
+        Set<String> remaining = redisTemplate.opsForZSet().range(QUEUE_KEY, 0, -1);
+        assertThat(remaining).doesNotContain(tokenId);
     }
 
     @Test
-    @DisplayName("대기 중 첫 번째 사용자만 정상적으로 ACTIVE 전환된다")
-    void only_first_user_can_be_activated() {
+    @DisplayName("activateEligibleTokens 호출 시 상위 N개 토큰이 제거된다")
+    void activate_top_tokens_should_be_deleted() throws InterruptedException {
         // given
-        QueueToken first = tokenRepository.enqueue(1L, clock);
-        QueueToken second = tokenRepository.enqueue(2L, clock);
+        String token1 = tokenCommandService.issue(1L);
+        Thread.sleep(10);
+        String token2 = tokenCommandService.issue(2L);
+        Thread.sleep(10);
+        String token3 = tokenCommandService.issue(3L);
 
         // when
-        tokenCommandService.activate(first.getUserId());
+        tokenCommandService.activateEligibleTokens(2);
 
         // then
-        assertThat(tokenRepository.findByUserId(1L).get().getStatus()).isEqualTo(TokenStatus.ACTIVE);
-        assertThat(tokenRepository.findByUserId(2L).get().getStatus()).isEqualTo(TokenStatus.WAITING);
-    }
+        Set<String> remaining = redisTemplate.opsForZSet().range(QUEUE_KEY, 0, -1);
 
-    @Test
-    @DisplayName("차례가 아닌 사용자가 활성화 요청 시 예외가 발생한다")
-    void activate_out_of_order_throws() {
-        // given
-        QueueToken first = tokenRepository.enqueue(1L, clock); // 먼저 들어온 사용자
-        QueueToken second = tokenRepository.enqueue(2L, clock); // 나중 사용자
-
-        // when // then
-        assertThatThrownBy(() -> tokenCommandService.activate(second.getUserId()))
-                .isInstanceOf(CustomException.class)
-                .hasMessage("아직 차례가 아닙니다.");
+        assertThat(remaining).contains(token3);
+        assertThat(remaining).doesNotContain(token1, token2);
     }
 }

@@ -1,8 +1,11 @@
 package kr.hhplus.be.server.presentation.token;
 
+import jakarta.servlet.http.HttpServletRequest;
 import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.application.token.TokenQueryService;
-import kr.hhplus.be.server.domain.token.QueueToken;
+import kr.hhplus.be.server.domain.token.TokenStatus;
+import kr.hhplus.be.server.support.exception.CustomException;
+import kr.hhplus.be.server.support.exception.ErrorCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,53 +26,29 @@ public class TokenController {
     }
 
     /**
-     * [POST] /token/{userId}
-     * - 유저 ID로 대기열 토큰을 발급한다.
-     * - 기본 상태는 WAITING이며, 이후 활성화 요청이 필요
+     * [POST] /token/
+     * - 대기열 토큰을 새로 발급한다 (UUID 기반)
+     * - 기본 상태는 WAITING
      */
-    @PostMapping("/{userId}")
-    public ResponseEntity<QueueTokenStatusResponse> issue(@PathVariable Long userId) {
-        QueueToken token = tokenCommandService.issue(userId);
-        int position = tokenQueryService.getWaitingPosition(userId).orElse(0);
+    @PostMapping
+    public ResponseEntity<String> issue(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId == null) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
 
-        return ResponseEntity.ok(new QueueTokenStatusResponse(
-                userId,
-                token.getStatus(),
-                position
-        ));
+        String tokenId = tokenCommandService.issue(userId);
+        return ResponseEntity.ok(tokenId);
     }
 
     /**
-     * [POST] /token/activate/{userId}
-     * - 토큰 상태를 ACTIVE로 변경한다.
-     * - 유효시간이 초과되었을 경우 예외 발생
+     * [GET] /token/{tokenId}/status
+     * - 토큰이 대기열에 있으면 "WAITING", 없으면 "ACTIVE"로 응답
      */
-    @PostMapping("/activate/{userId}")
-    public ResponseEntity<String> activate(@PathVariable Long userId) {
-        tokenCommandService.activate(userId);
-        return ResponseEntity.ok("Token activated successfully");
+    @GetMapping("/{tokenId}/status")
+    public ResponseEntity<TokenStatus> status(@PathVariable String tokenId) {
+        Optional<Integer> position = tokenQueryService.getWaitingPosition(tokenId);
+        TokenStatus status = position.isPresent() ? TokenStatus.WAITING : TokenStatus.ACTIVE;
+        return ResponseEntity.ok(status);
     }
-
-    /**
-     * [GET] /token/{userId}/status
-     * - 유저의 현재 대기열 토큰 상태를 조회한다.
-     */
-    @GetMapping("/{userId}/status")
-    public ResponseEntity<QueueToken> status(@PathVariable Long userId) {
-        Optional<QueueToken> token = tokenCommandService.status(userId);
-        return token.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.noContent().build());
-    }
-
-    /**
-     * [GET] /token/{userId}/position
-     * - 대기열에서 현재 유저의 순서를 조회한다.
-     */
-    @GetMapping("/{userId}/position")
-    public ResponseEntity<Integer> getWaitingPosition(@PathVariable Long userId) {
-        Optional<Integer> position = tokenQueryService.getWaitingPosition(userId);
-        return position.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.noContent().build());
-    }
-
 }
