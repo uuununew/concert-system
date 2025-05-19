@@ -35,6 +35,6 @@ public class TokenConfig {
     public TokenCommandService tokenCommandService(TokenRepository tokenRepository,
                                                    TokenManager tokenManager,
                                                    Clock clock) {
-        return new TokenCommandService(tokenRepository, tokenManager, clock, 5);
+        return new TokenCommandService(tokenRepository, clock, 5);
     }
 }
