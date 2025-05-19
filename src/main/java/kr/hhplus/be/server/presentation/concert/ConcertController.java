@@ -3,11 +3,18 @@ package kr.hhplus.be.server.presentation.concert;
 import jakarta.validation.Valid;
 import kr.hhplus.be.server.application.concert.ConcertCacheService;
 import kr.hhplus.be.server.application.concert.ConcertService;
+import kr.hhplus.be.server.application.concert.ConcertRankingService;
 import kr.hhplus.be.server.domain.concert.Concert;
+import kr.hhplus.be.server.domain.concert.ranking.ConcertRankingResult;
+import kr.hhplus.be.server.domain.concert.ranking.DailyConcertRanking;
+import kr.hhplus.be.server.infrastructure.concert.DailyConcertRankingJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -17,6 +24,8 @@ public class ConcertController {
 
     private final ConcertService concertService;
     private final ConcertCacheService concertCacheService;
+    private final ConcertRankingService concertRankingService;
+    private final DailyConcertRankingJpaRepository dailyConcertRankingJpaRepository;
 
     /**
      * [POST] /concerts
@@ -61,5 +70,34 @@ public class ConcertController {
     public ConcertResponse getConcert(@PathVariable @Valid Long concertId) {
         Concert concert = concertService.getConcertById(concertId);
         return ConcertResponse.from(concert);
+    }
+
+    /**
+     * 실시간 콘서트 랭킹 조회 (매진 시간 기준)
+     * Redis ZSet 기반으로 오늘 매진된 콘서트를 빠른 순서로 정렬하여 조회합니다.
+     * GET /concerts/ranking
+     */
+    @GetMapping("/ranking")
+    public ResponseEntity<List<ConcertRankingResult>> getTopConcerts(
+            @RequestParam(defaultValue = "3") int limit) {
+        List<ConcertRankingResult> result = concertRankingService.getTopConcerts(limit);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 일일 콘서트 랭킹 조회 (매진 시간 기준)
+     * 특정 날짜에 매진된 콘서트를 DB에서 조회합니다.
+     *
+     * GET /concerts/daily-ranking?date=2025-05-15
+     */
+    @GetMapping("/daily-ranking")
+    public ResponseEntity<List<ConcertRankingResult>> getDailyRanking(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        List<DailyConcertRanking> rankings = dailyConcertRankingJpaRepository.findAllByRankingDate(date);
+        List<ConcertRankingResult> result = rankings.stream()
+                .map(r -> new ConcertRankingResult(r.getConcertId(), r.getSoldOutDurationMillis()))
+                .toList();
+
+        return ResponseEntity.ok(result);
     }
 }

@@ -59,6 +59,12 @@ public class LoggingFilter implements Filter {
         String method = request.getMethod();
         String uri = request.getRequestURI();
 
+        try {
+            request.getParameterMap(); // 또는 request.getInputStream().readAllBytes();
+        } catch (Exception e) {
+            log.warn("Request content 초기화 실패", e);
+        }
+
         if ("GET".equalsIgnoreCase(method)) {
             log.info("[Request] {} {}", method, uri);
         } else {
