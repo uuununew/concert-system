@@ -5,6 +5,7 @@ import kr.hhplus.be.server.application.concert.ConcertCacheService;
 import kr.hhplus.be.server.application.concert.ConcertService;
 import kr.hhplus.be.server.application.concert.ConcertRankingService;
 import kr.hhplus.be.server.domain.concert.Concert;
+import kr.hhplus.be.server.domain.concert.ranking.ConcertRankingDetail;
 import kr.hhplus.be.server.domain.concert.ranking.ConcertRankingResult;
 import kr.hhplus.be.server.domain.concert.ranking.DailyConcertRanking;
 import kr.hhplus.be.server.infrastructure.concert.DailyConcertRankingJpaRepository;
@@ -78,9 +79,9 @@ public class ConcertController {
      * GET /concerts/ranking
      */
     @GetMapping("/ranking")
-    public ResponseEntity<List<ConcertRankingResult>> getTopConcerts(
+    public ResponseEntity<List<ConcertRankingDetail>> getTopConcerts(
             @RequestParam(defaultValue = "3") int limit) {
-        List<ConcertRankingResult> result = concertRankingService.getTopConcerts(limit);
+        List<ConcertRankingDetail> result = concertRankingService.getTopConcertDetails(limit);
         return ResponseEntity.ok(result);
     }
 

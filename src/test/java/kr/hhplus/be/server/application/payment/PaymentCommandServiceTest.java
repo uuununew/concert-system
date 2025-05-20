@@ -201,4 +201,44 @@ public class PaymentCommandServiceTest {
                 .hasMessageContaining("결제 정보를 찾을 수 없습니다.");
     }
 
+    @DisplayName("랭킹 저장 중 예외가 발생해도 결제는 성공한다")
+    @Test
+    void pay_should_succeed_even_if_ranking_save_fails() {
+        // given
+        Long userId = 1L;
+        Long reservationId = 10L;
+        BigDecimal amount = BigDecimal.valueOf(10000);
+        CreatePaymentCommand command = new CreatePaymentCommand(userId, reservationId, amount);
+
+        User user = new User(userId);
+        Concert concert = Concert.withStatus(kr.hhplus.be.server.domain.concert.ConcertStatus.READY);
+        ReflectionTestUtils.setField(concert, "id", 1L);
+        ReflectionTestUtils.setField(concert, "concertDateTime", LocalDateTime.now().minusMinutes(3));
+        ConcertSeat seat = ConcertSeat.withAll(
+                100L, concert, "A1", "1층", "A", "VIP", amount, SeatStatus.RESERVED, LocalDateTime.now());
+        Reservation reserved = Reservation.create(user, seat, amount);
+
+        // mocking
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reserved));
+        when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(concertSeatCountRedisRepository.decrementRemainCount(1L)).thenReturn(0L);
+        // 랭킹 저장 시 예외 발생하도록 설정
+        doThrow(new RuntimeException("Redis 장애")).when(concertRankingService)
+                .recordSoldOutTime(eq(concert.getId()), anyLong(), anyLong());
+
+        // when
+        Payment payment = paymentCommandService.pay(command);
+
+        // then
+        assertThat(payment.getAmount()).isEqualByComparingTo(amount);
+        assertThat(payment.getReservation().getUserId()).isEqualTo(userId);
+
+        verify(cashCommandService).use(any());
+        verify(reservationRepository).save(any());
+        verify(paymentRepository).save(any());
+        verify(concertSeatCountRedisRepository).decrementRemainCount(concert.getId());
+        // 랭킹 저장이 실패해도 예외 없이 성공해야 함
+        verify(concertRankingService).recordSoldOutTime(eq(concert.getId()), anyLong(), anyLong());
+    }
+
 }

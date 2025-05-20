@@ -18,12 +18,12 @@ public class TokenQueryService {
     public QueueTokenStatusResponse getTokenStatus(String tokenId) {
         Optional<Integer> positionOpt = tokenRepository.getWaitingPosition(tokenId);
 
+        // ZSet에 없으면 EXPIRED 상태로 판단
         if (positionOpt.isEmpty()) {
-            // ZSet에 없음 → 입장 완료 or 만료됨
             return new QueueTokenStatusResponse(
                     tokenId,
                     null,
-                    TokenStatus.ACTIVE,
+                    TokenStatus.EXPIRED,
                     null
             );
         }
