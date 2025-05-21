@@ -1,9 +1,9 @@
 package kr.hhplus.be.server.application.reservation;
 
-import kr.hhplus.be.server.application.reservation.event.ReservationEventPublisher;
 import kr.hhplus.be.server.domain.concert.ConcertSeat;
 import kr.hhplus.be.server.domain.concert.ConcertSeatRepository;
 import kr.hhplus.be.server.domain.reservation.Reservation;
+import kr.hhplus.be.server.domain.reservation.ReservationEventPublisher;
 import kr.hhplus.be.server.domain.reservation.ReservationRepository;
 import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.domain.user.User;
@@ -62,8 +62,8 @@ public class ReservationCommandService {
             Reservation saved = reservationRepository.save(reservation);
             tokenCommandService.complete(command.tokenId());
 
-            //이벤트 발행
-            reservationEventPublisher.publishReservationCompleted(saved.getId());
+            // 이벤트 발행
+            reservationEventPublisher.publishReservationCompleted(saved.getId(), saved.getCreatedAt());
 
             return saved;
         } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
