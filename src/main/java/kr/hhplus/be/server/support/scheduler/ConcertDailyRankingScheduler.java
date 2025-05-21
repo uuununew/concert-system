@@ -3,7 +3,7 @@ package kr.hhplus.be.server.support.scheduler;
 import kr.hhplus.be.server.domain.concert.ranking.ConcertRankingRepository;
 import kr.hhplus.be.server.domain.concert.ranking.ConcertRankingResult;
 import kr.hhplus.be.server.domain.concert.ranking.DailyConcertRanking;
-import kr.hhplus.be.server.infrastructure.concert.DailyConcertRankingJpaRepository;
+import kr.hhplus.be.server.infrastructure.concert.ranking.DailyConcertRankingJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;

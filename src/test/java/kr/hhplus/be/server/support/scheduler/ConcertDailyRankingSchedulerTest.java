@@ -1,7 +1,7 @@
 package kr.hhplus.be.server.support.scheduler;
 
 import kr.hhplus.be.server.domain.concert.ranking.DailyConcertRanking;
-import kr.hhplus.be.server.infrastructure.concert.DailyConcertRankingJpaRepository;
+import kr.hhplus.be.server.infrastructure.concert.ranking.DailyConcertRankingJpaRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
