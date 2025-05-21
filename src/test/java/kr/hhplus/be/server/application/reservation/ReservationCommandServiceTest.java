@@ -1,6 +1,6 @@
 package kr.hhplus.be.server.application.reservation;
 
-import kr.hhplus.be.server.application.reservation.event.ReservationEventPublisher;
+import kr.hhplus.be.server.domain.reservation.ReservationEventPublisher;
 import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.domain.concert.*;
 import kr.hhplus.be.server.domain.reservation.Reservation;
