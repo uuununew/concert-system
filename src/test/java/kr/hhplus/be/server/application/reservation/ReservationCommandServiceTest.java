@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.application.reservation;
 
+import kr.hhplus.be.server.application.reservation.event.ReservationEventPublisher;
 import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.domain.concert.*;
 import kr.hhplus.be.server.domain.reservation.Reservation;
@@ -30,17 +31,20 @@ public class ReservationCommandServiceTest {
     private ReservationRepository reservationRepository;
     private ConcertSeatRepository concertSeatRepository;
     private ReservationCommandService reservationCommandService;
+    private ReservationEventPublisher reservationEventPublisher;
 
     @BeforeEach
     void setUp() {
         tokenCommandService = mock(TokenCommandService.class);
         reservationRepository = mock(ReservationRepository.class);
         concertSeatRepository = mock(ConcertSeatRepository.class);
+        reservationEventPublisher = mock(ReservationEventPublisher.class);
 
         reservationCommandService = new ReservationCommandService(
                 tokenCommandService,
                 reservationRepository,
-                concertSeatRepository
+                concertSeatRepository,
+                reservationEventPublisher
         );
     }
 

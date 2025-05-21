@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.application.reservation;
 
+import kr.hhplus.be.server.application.reservation.event.ReservationEventPublisher;
 import kr.hhplus.be.server.domain.concert.ConcertSeat;
 import kr.hhplus.be.server.domain.concert.ConcertSeatRepository;
 import kr.hhplus.be.server.domain.reservation.Reservation;
@@ -24,6 +25,7 @@ public class ReservationCommandService {
     private final TokenCommandService tokenCommandService;
     private final ReservationRepository reservationRepository;
     private final ConcertSeatRepository concertSeatRepository;
+    private final ReservationEventPublisher reservationEventPublisher;
 
     /**
      * 좌석 예약 처리
@@ -59,6 +61,10 @@ public class ReservationCommandService {
         try {
             Reservation saved = reservationRepository.save(reservation);
             tokenCommandService.complete(command.tokenId());
+
+            //이벤트 발행
+            reservationEventPublisher.publishReservationCompleted(saved.getId());
+
             return saved;
         } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
             throw new CustomException(ErrorCode.ALREADY_RESERVED);
