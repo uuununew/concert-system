@@ -43,6 +43,8 @@
 [Redis 기반 랭킹, 비동기 설계 및 구현 보고서](https://uuununew.notion.site/Redis-1f4cc24e980180309dcdf69539090fbd?pvs=4)
 
 
+### 트랜잭션 설계 진단 및 개선 방안 보고서
+[트랜잭션 설계 진단 및 개선 방안 보고서](https://uuununew.notion.site/1facc24e9801800ca411f21ec4da1f85?pvs=4)
 
 
 
