@@ -6,12 +6,13 @@ import kr.hhplus.be.server.application.concert.ConcertRankingService;
 import kr.hhplus.be.server.domain.concert.ConcertRepository;
 import kr.hhplus.be.server.domain.concert.ranking.ConcertRankingRepository;
 import kr.hhplus.be.server.domain.concert.ranking.DailyConcertRanking;
+import kr.hhplus.be.server.domain.concert.ranking.RankingEventPublisher;
 import kr.hhplus.be.server.domain.payment.Payment;
 import kr.hhplus.be.server.domain.payment.PaymentRepository;
 import kr.hhplus.be.server.domain.reservation.Reservation;
 import kr.hhplus.be.server.domain.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.reservation.ReservationStatus;
-import kr.hhplus.be.server.infrastructure.concert.ConcertSeatCountRedisRepository;
+import kr.hhplus.be.server.infrastructure.concert.ranking.ConcertSeatCountRedisRepository;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -31,10 +32,8 @@ public class PaymentCommandService {
     private final ReservationRepository reservationRepository;
     private final PaymentRepository paymentRepository;
     private final CashCommandService cashCommandService;
-    private final ConcertRankingService concertRankingService;
     private final ConcertSeatCountRedisRepository concertSeatCountRedisRepository;
-    private final ConcertRepository concertRepository;
-    private final ConcertRankingRepository concertRankingRepository;
+    private final RankingEventPublisher rankingEventPublisher;
 
     /**
      * 결제 처리
@@ -72,10 +71,11 @@ public class PaymentCommandService {
         // 5. 매진이면 랭킹 기록
         if (remain <= 0) {
             try {
-                recordSoldOutRanking(concertId, reservation.getConcertSeat().getConcert().getConcertDateTime());
+                LocalDateTime soldOutTime = LocalDateTime.now();
+                LocalDateTime openTime = reservation.getConcertSeat().getConcert().getConcertDateTime();
+                rankingEventPublisher.publishConcertSoldOut(concertId, openTime, soldOutTime);
             } catch (Exception e) {
                 log.error("매진 랭킹 기록 중 오류 발생: concertId={}, error={}", concertId, e.getMessage(), e);
-                // 예외 발생 시 결제는 정상 처리됨
             }
         }
         return payment;
@@ -91,31 +91,5 @@ public class PaymentCommandService {
 
         payment.cancel(); // 내부 상태 변경
         return paymentRepository.save(payment);
-    }
-
-    private void recordSoldOutRanking(Long concertId, LocalDateTime concertDateTime) {
-        long soldOutAtMillis = System.currentTimeMillis();
-        long openedAtMillis = concertDateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
-        long duration = soldOutAtMillis - openedAtMillis;
-
-        // 매진 시간이 오픈 시간보다 빠른 경우 저장 생략
-        if (duration < 0) {
-            log.warn("매진 시간보다 오픈 시간이 늦어 랭킹 저장을 생략합니다. concertId={}, duration={}ms", concertId, duration);
-            return;
-        }
-        try {
-            // 1. Redis 기록
-            concertRankingService.recordSoldOutTime(concertId, soldOutAtMillis, openedAtMillis);
-
-            // 2. DB 기록
-            DailyConcertRanking ranking = DailyConcertRanking.builder()
-                    .concertId(concertId)
-                    .soldOutDurationMillis(duration)
-                    .rankingDate(LocalDate.now())
-                    .build();
-
-        } catch (Exception e) {
-            log.error("매진 랭킹 기록 중 오류 발생 (Redis or DB): {}", e.getMessage(), e);
-        }
     }
 }
