@@ -1,4 +1,4 @@
-package kr.hhplus.be.server.infrastructure.concert;
+package kr.hhplus.be.server.infrastructure.concert.ranking;
 
 import kr.hhplus.be.server.domain.concert.ranking.ConcertRankingRepository;
 import kr.hhplus.be.server.domain.concert.ranking.ConcertRankingResult;
@@ -26,7 +26,6 @@ public class ConcertRankingRedisRepository implements ConcertRankingRepository {
     private static final long TTL_SECONDS = 60 * 60 * 24; // 1일
 
     private final StringRedisTemplate redisTemplate;
-    private final DailyConcertRankingJpaRepository dailyRankingJpaRepository;
 
     @Override
     public void saveSoldOutRanking(Long concertId, long soldOutAtMillis, long openedAtMillis) {
@@ -36,25 +35,6 @@ public class ConcertRankingRedisRepository implements ConcertRankingRepository {
         redisTemplate.opsForZSet().add(key, String.valueOf(concertId), duration);
         redisTemplate.expire(key, Duration.ofSeconds(TTL_SECONDS));
         log.info("매진 랭킹 저장: concertId={}, duration={}ms", concertId, duration);
-
-        // DB 중복 방지 및 정합성 보장용 저장
-        try {
-            LocalDate rankingDate = LocalDate.now();
-            boolean exists = dailyRankingJpaRepository.existsByConcertIdAndRankingDate(concertId, rankingDate);
-
-            if (!exists) {
-                DailyConcertRanking ranking = DailyConcertRanking.builder()
-                        .concertId(concertId)
-                        .soldOutDurationMillis(duration)
-                        .rankingDate(rankingDate)
-                        .build();
-
-                dailyRankingJpaRepository.save(ranking);
-                log.info("DB 저장 완료: concertId={}, duration={}, date={}", concertId, duration, rankingDate);
-            }
-        } catch (Exception e) {
-            log.error("DB 매진 랭킹 저장 중 오류 발생: {}", e.getMessage(), e);
-        }
     }
 
     @Override

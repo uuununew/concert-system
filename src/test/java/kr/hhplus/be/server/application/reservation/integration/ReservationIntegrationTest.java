@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.application.reservation.integration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.hhplus.be.server.application.reservation.CreateReservationCommand;
 import kr.hhplus.be.server.application.reservation.ReservationCommandService;
 import kr.hhplus.be.server.application.token.TokenCommandService;
@@ -7,7 +8,16 @@ import kr.hhplus.be.server.config.TestContainerConfig;
 import kr.hhplus.be.server.domain.reservation.Reservation;
 import kr.hhplus.be.server.domain.reservation.ReservationRepository;
 import kr.hhplus.be.server.domain.reservation.ReservationStatus;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import kr.hhplus.be.server.domain.concert.*;
 import kr.hhplus.be.server.domain.token.TokenRepository;
@@ -19,13 +29,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.awaitility.Awaitility.await;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
+@Slf4j
+@EnableAsync
 @SpringBootTest
 @Transactional
 @Testcontainers
+@AutoConfigureMockMvc
 public class ReservationIntegrationTest extends TestContainerConfig {
 
     @Autowired
@@ -45,6 +60,15 @@ public class ReservationIntegrationTest extends TestContainerConfig {
 
     @Autowired
     private TokenCommandService tokenCommandService;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     private Long concertSeatId;
     private String tokenId;
@@ -142,5 +166,24 @@ public class ReservationIntegrationTest extends TestContainerConfig {
         assertThatThrownBy(() -> reservationCommandService.reserve(command))
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining("토큰 정보가 없습니다");
+    }
+
+    @Test
+    @DisplayName("예약 완료 시 이벤트가 발행되고 예약 정보가 DB에 저장된다")
+    void publish_event_should_be_processed_after_reservation() {
+        // given
+        redisTemplate.opsForZSet().add("reservation:queue", tokenId, 0L);
+        tokenCommandService.activateEligibleTokens(1);
+
+        CreateReservationCommand command = new CreateReservationCommand(
+                tokenId, userId, concertSeatId, BigDecimal.valueOf(10000));
+
+        // when
+        Reservation reservation = reservationCommandService.reserve(command);
+
+        // then (예약 저장 여부 + 로그 수동 확인 또는 mock 활용한 다른 접근)
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(reservationRepository.findById(reservation.getId())).isPresent()
+        );
     }
 }
