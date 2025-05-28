@@ -8,7 +8,7 @@ import kr.hhplus.be.server.domain.concert.Concert;
 import kr.hhplus.be.server.domain.concert.ranking.ConcertRankingDetail;
 import kr.hhplus.be.server.domain.concert.ranking.ConcertRankingResult;
 import kr.hhplus.be.server.domain.concert.ranking.DailyConcertRanking;
-import kr.hhplus.be.server.infrastructure.concert.DailyConcertRankingJpaRepository;
+import kr.hhplus.be.server.infrastructure.concert.ranking.DailyConcertRankingJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;

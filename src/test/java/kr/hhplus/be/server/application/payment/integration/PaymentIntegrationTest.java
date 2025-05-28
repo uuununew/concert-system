@@ -192,12 +192,10 @@ public class PaymentIntegrationTest extends TestContainerConfig {
                 ConcertSeat.of(concert, "Z9", "3층", "Z", "R", BigDecimal.valueOf(30000))
         );
 
-        // 좌석 수 1개만 등록한 상태에서 Redis에 좌석 카운트 = 1 로 세팅
-        String remainKey = "concert-seat-remain:" + concert.getId();
-        redisTemplate.opsForValue().set(remainKey, "1");
+        redisTemplate.opsForValue().set("concert-seat-remain:" + concert.getId(), "1");
 
         String tokenId = tokenCommandService.issue(userId);
-        Thread.sleep(1);
+        Thread.sleep(10);
         tokenCommandService.activateEligibleTokens(1000);
         cashService.charge(new ChargeCashCommand(userId, BigDecimal.valueOf(50000)));
 
@@ -206,8 +204,7 @@ public class PaymentIntegrationTest extends TestContainerConfig {
 
         // when
         Payment payment = paymentCommandService.pay(
-                new CreatePaymentCommand(userId, reservation.getId(), seat.getPrice())
-        );
+                new CreatePaymentCommand(userId, reservation.getId(), seat.getPrice()));
 
         // then
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
@@ -220,26 +217,17 @@ public class PaymentIntegrationTest extends TestContainerConfig {
     private void clearRedisQueue() {
         redisTemplate.delete("waiting-token:WAITING");
         redisTemplate.delete("active-token");
-
         Set<String> tokenKeys = redisTemplate.keys("token:*");
-        if (tokenKeys != null && !tokenKeys.isEmpty()) {
-            redisTemplate.delete(tokenKeys);
-        }
+        if (tokenKeys != null) redisTemplate.delete(tokenKeys);
     }
 
     private void waitUntilTokenIsFirst(String tokenId) throws InterruptedException {
         int retry = 0;
-        while (retry++ < 200) {  // 최대 1초 대기 (200 * 5ms)
+        while (retry++ < 200) {
             Set<String> first = redisTemplate.opsForZSet().range("waiting-token:WAITING", 0, 0);
-            if (first != null && first.contains(tokenId)) {
-                return; // 선두일 때만 통과
-            }
+            if (first != null && first.contains(tokenId)) return;
             Thread.sleep(5);
         }
-        Set<String> currentQueue = redisTemplate.opsForZSet().range("waiting-token:WAITING", 0, -1);
-        System.out.println("대기열 선두 아님: " + tokenId);
-        System.out.println("현재 대기열: " + currentQueue);
-
         throw new IllegalStateException("토큰이 대기열 선두가 되지 못했습니다: " + tokenId);
     }
 }

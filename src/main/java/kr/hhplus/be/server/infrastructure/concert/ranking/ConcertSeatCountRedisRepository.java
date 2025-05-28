@@ -1,4 +1,4 @@
-package kr.hhplus.be.server.infrastructure.concert;
+package kr.hhplus.be.server.infrastructure.concert.ranking;
 
 import kr.hhplus.be.server.domain.concert.ConcertSeatCountRepository;
 import lombok.RequiredArgsConstructor;
