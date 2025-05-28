@@ -5,6 +5,7 @@ import kr.hhplus.be.server.domain.reservation.ReservationCompletedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 public class SpringReservationEventPublisher implements ReservationEventPublisher{
 
     private final ApplicationEventPublisher eventPublisher;
+    private final KafkaTemplate<String, String> kafkaTemplate;
     private final KafkaReservationEventProducer kafkaReservationEventProducer;
 
     @Override
