@@ -65,6 +65,9 @@ dependencies {
 	testCompileOnly("org.projectlombok:lombok:1.18.30")
 	testAnnotationProcessor("org.projectlombok:lombok:1.18.30")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.1.0")
+
+	//kafka
+	implementation("org.springframework.kafka:spring-kafka")
 }
 
 tasks.withType<Test> {
