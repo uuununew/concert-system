@@ -3,27 +3,27 @@ package kr.hhplus.be.server.presentation.token;
 import jakarta.servlet.http.HttpServletRequest;
 import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.application.token.TokenQueryService;
+import kr.hhplus.be.server.application.token.WaitingTokenPublisher;
 import kr.hhplus.be.server.domain.token.TokenStatus;
+import kr.hhplus.be.server.infrastructure.token.WaitingTokenKafkaProducer;
+import kr.hhplus.be.server.infrastructure.token.WaitingTokenRequestMessage;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/token")
-
+@RequiredArgsConstructor
 public class TokenController {
 
-    private final TokenCommandService tokenCommandService;
     private final TokenQueryService tokenQueryService;
-
-    public TokenController(TokenCommandService tokenCommandService,
-                           TokenQueryService tokenQueryService) {
-        this.tokenCommandService = tokenCommandService;
-        this.tokenQueryService = tokenQueryService;
-    }
+    private final WaitingTokenPublisher waitingTokenPublisher;
 
     /**
      * [POST] /token/
@@ -31,14 +31,21 @@ public class TokenController {
      * - 기본 상태는 WAITING
      */
     @PostMapping
-    public ResponseEntity<String> issue(HttpServletRequest request) {
+    public ResponseEntity<String> issue(HttpServletRequest request, @RequestParam("concertId") Long concertId) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
             throw new CustomException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
         }
 
-        String tokenId = tokenCommandService.issue(userId);
-        return ResponseEntity.ok(tokenId);
+        //Kafka 메시지 발행
+        WaitingTokenRequestMessage message = new WaitingTokenRequestMessage(
+                userId,
+                concertId,
+                LocalDateTime.now()
+        );
+        waitingTokenPublisher.publish(message); // Kafka Producer 사용
+
+        return ResponseEntity.accepted().build();
     }
 
     /**

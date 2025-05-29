@@ -1,4 +1,4 @@
-package kr.hhplus.be.server.application.reservation;
+package kr.hhplus.be.server.support.scheduler;
 
 import kr.hhplus.be.server.domain.reservation.ReservationScheduleService;
 import lombok.RequiredArgsConstructor;
@@ -20,13 +20,13 @@ public class ReservationScheduler {
     /**
      * [스케줄링]
      * 결제되지 않고 일정 시간이 지난 예약을 자동으로 취소
-     * - 매 1분마다 실행됨
+     * - 매 30분마다 실행됨
     **/
-    @Scheduled(cron = "0 */1 * * * *")
+    @Scheduled(cron = "0 */30 * * * *")
     @Transactional
     public void cancelUnpaidReservations() {
-        LocalDateTime cutoffTime = LocalDateTime.now().minusMinutes(10);
+        LocalDateTime cutoffTime = LocalDateTime.now().minusMinutes(30);
         reservationScheduleService.cancelReservationsBefore(cutoffTime);
-        log.info("10분 이상 미결제 예약 자동 취소 스케줄 실행됨");
+        log.info("30분 이상 미결제 예약 자동 취소 스케줄 실행됨");
     }
 }
