@@ -47,7 +47,8 @@
 [트랜잭션 설계 진단 및 개선 방안 보고서](https://uuununew.notion.site/1facc24e9801800ca411f21ec4da1f85?pvs=4)
 
 
-
+### Kafka 학습과 예약 이벤트 처리 보고서
+[Kafka 학습과 예약 이벤트 처리 보고서](https://uuununew.notion.site/Kafka-201cc24e9801805eaf81d12e1ea5d132?pvs=4)
 
 
 
