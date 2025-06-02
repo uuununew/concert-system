@@ -63,7 +63,12 @@ public class ReservationCommandService {
             tokenCommandService.complete(command.tokenId());
 
             // 이벤트 발행
-            reservationEventPublisher.publishReservationCompleted(saved.getId(), saved.getCreatedAt());
+            reservationEventPublisher.publishReservationCompleted(
+                    saved.getId(),
+                    saved.getUserId(),
+                    saved.getPrice(),
+                    saved.getCreatedAt()
+            );
 
             return saved;
         } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
