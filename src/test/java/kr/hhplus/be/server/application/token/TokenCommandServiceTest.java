@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.RedisTemplate;
 
 import java.time.*;
 import java.util.Optional;
@@ -20,13 +21,15 @@ public class TokenCommandServiceTest{
     private TokenManager tokenManager;
     private Clock clock;
     private TokenCommandService tokenCommandService;
+    private RedisTemplate<String, String> redisTemplate;
 
     @BeforeEach
     void setUp() {
         tokenRepository = mock(TokenRepository.class);
         tokenManager = mock(TokenManager.class);
         clock = Clock.fixed(Instant.parse("2025-05-15T12:00:00Z"), ZoneOffset.UTC);
-        tokenCommandService = new TokenCommandService(tokenRepository, clock, 10);
+        redisTemplate = mock(RedisTemplate.class);
+        tokenCommandService = new TokenCommandService(tokenRepository, clock, redisTemplate,10);
     }
 
     @Test

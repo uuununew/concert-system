@@ -4,19 +4,19 @@ import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.domain.token.TokenManager;
 import kr.hhplus.be.server.domain.token.TokenRepository;
 import kr.hhplus.be.server.infrastructure.token.TokenRepositoryImpl;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.RedisTemplate;
 
 import java.time.Clock;
 
 @Configuration
+@RequiredArgsConstructor
 public class TokenConfig {
 
     private final TokenRepositoryImpl tokenRepositoryImpl;
-
-    public TokenConfig(TokenRepositoryImpl tokenRepositoryImpl) {
-        this.tokenRepositoryImpl = tokenRepositoryImpl;
-    }
+    private final RedisTemplate<String, String> redisTemplate;
 
     @Bean
     public TokenRepository tokenRepository() {return tokenRepositoryImpl;}
@@ -32,9 +32,10 @@ public class TokenConfig {
     }
 
     @Bean
-    public TokenCommandService tokenCommandService(TokenRepository tokenRepository,
-                                                   TokenManager tokenManager,
-                                                   Clock clock) {
-        return new TokenCommandService(tokenRepository, clock, 5);
+    public TokenCommandService tokenCommandService(
+            TokenManager tokenManager,
+            Clock clock
+    ) {
+        return new TokenCommandService(tokenRepositoryImpl, clock, redisTemplate, 5);
     }
 }
