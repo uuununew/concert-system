@@ -51,6 +51,8 @@
 [Kafka 학습과 예약 이벤트 처리 보고서](https://uuununew.notion.site/Kafka-201cc24e9801805eaf81d12e1ea5d132?pvs=4)
 
 
+### Kafka 대기열 시스템 설계 보고서
+[Kafka 대기열 시스템 설계 보고서](https://uuununew.notion.site/Kafka-202cc24e9801808b9b61c7fd8a2c370d?pvs=4)
 
 
 
