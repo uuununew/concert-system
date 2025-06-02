@@ -1,4 +1,4 @@
-package kr.hhplus.be.server.infrastructure.reservation;
+package kr.hhplus.be.server.infrastructure.kafka.producer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.hhplus.be.server.domain.reservation.ReservationCompletedEvent;

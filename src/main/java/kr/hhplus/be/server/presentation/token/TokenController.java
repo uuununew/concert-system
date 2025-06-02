@@ -1,11 +1,9 @@
 package kr.hhplus.be.server.presentation.token;
 
 import jakarta.servlet.http.HttpServletRequest;
-import kr.hhplus.be.server.application.token.TokenCommandService;
 import kr.hhplus.be.server.application.token.TokenQueryService;
-import kr.hhplus.be.server.application.token.WaitingTokenPublisher;
+import kr.hhplus.be.server.domain.token.WaitingTokenPublisher;
 import kr.hhplus.be.server.domain.token.TokenStatus;
-import kr.hhplus.be.server.infrastructure.token.WaitingTokenKafkaProducer;
 import kr.hhplus.be.server.infrastructure.token.WaitingTokenRequestMessage;
 import kr.hhplus.be.server.support.exception.CustomException;
 import kr.hhplus.be.server.support.exception.ErrorCode;
@@ -14,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.Optional;
 
 @RestController

@@ -1,7 +1,8 @@
-package kr.hhplus.be.server.infrastructure.token;
+package kr.hhplus.be.server.infrastructure.kafka.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.hhplus.be.server.application.token.TokenCommandService;
+import kr.hhplus.be.server.infrastructure.token.WaitingTokenRequestMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
