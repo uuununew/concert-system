@@ -1,12 +1,10 @@
-package kr.hhplus.be.server.infrastructure.payment;
+package kr.hhplus.be.server.infrastructure.kafka.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kr.hhplus.be.server.application.payment.PaymentCommandService;
 import kr.hhplus.be.server.domain.reservation.ReservationCompletedEvent;
 import kr.hhplus.be.server.domain.reservation.ReservationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 

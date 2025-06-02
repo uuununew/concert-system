@@ -1,4 +1,4 @@
-package kr.hhplus.be.server.application.token;
+package kr.hhplus.be.server.domain.token;
 
 import kr.hhplus.be.server.infrastructure.token.WaitingTokenRequestMessage;
 
