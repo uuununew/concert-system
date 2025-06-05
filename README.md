@@ -55,6 +55,10 @@
 [Kafka 대기열 시스템 설계 보고서](https://uuununew.notion.site/Kafka-202cc24e9801808b9b61c7fd8a2c370d?pvs=4)
 
 
+### 콘서트 대기열 서비스 성능 테스트 및 장애 대응 보고서
+[콘서트 대기열 서비스 성능 테스트 및 장애 대응 보고서](https://uuununew.notion.site/209cc24e9801808890bce9d05f65d317)
+
+
 
 
 
