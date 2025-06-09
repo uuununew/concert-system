@@ -68,6 +68,9 @@ dependencies {
 
 	//kafka
 	implementation("org.springframework.kafka:spring-kafka")
+
+	implementation ("io.micrometer:micrometer-registry-prometheus")
+	implementation ("org.springframework.boot:spring-boot-starter-actuator")
 }
 
 tasks.withType<Test> {
